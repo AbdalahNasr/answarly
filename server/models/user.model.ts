@@ -20,5 +20,5 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-// Prevent model overwrite in dev
-export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export default User;
