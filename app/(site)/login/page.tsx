@@ -9,29 +9,64 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Github, Mail, Lock, User } from "lucide-react"
 import { useI18n } from "@/components/i18n"
+import { useToast } from '@/hooks/use-toast'
+import { useRouter } from 'next/navigation'
 import GradientLoader from "@/components/gradient-loader"
 
 export default function LoginPage() {
   const { dict, lang } = useI18n()
   const [username, setUsername] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
 
   useEffect(() => {
     setMessage("")
+    try {
+      const raw = localStorage.getItem('answerly-user')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setAvatarUrl(parsed.avatarUrl || null)
+        setUsername(parsed.username || '')
+      }
+    } catch {}
   }, [lang])
 
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage("")
-    // Simulate sign-in delay
-    setTimeout(() => {
-      localStorage.setItem("answerly-user", JSON.stringify({ username }))
+    const router = useRouter()
+    const { toast } = useToast()
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: username, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const msg = data?.error || data?.message || 'Login failed'
+        toast({ title: 'Sign in failed', description: msg, variant: 'destructive' })
+        setMessage(msg)
+        return
+      }
+      try { localStorage.setItem('answerly-user', JSON.stringify(data.user)) } catch {}
+      try { localStorage.setItem('answerly-token', data.token) } catch {}
+      toast({ title: 'Signed in', description: 'Redirecting to profile...' })
+      const uid = data.user?.id || data.user?._id
+      if (uid) {
+        setTimeout(() => router.push(`/profile/${uid}`), 400)
+      } else {
+        setTimeout(() => router.push('/profile'), 400)
+      }
+    } catch (err: any) {
+      toast({ title: 'Sign in failed', description: err.message || 'Please try again', variant: 'destructive' })
+      setMessage(err.message || 'Error')
+    } finally {
       setLoading(false)
-      setMessage(dict.login.success)
-    }, 800)
+    }
   }
 
   const oauth = (provider: "google" | "github") => {
@@ -55,6 +90,11 @@ export default function LoginPage() {
                 <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{dict.login.title}</CardTitle>
               </CardHeader>
               <CardContent className="relative">
+                {avatarUrl && (
+                  <div className="flex justify-center mb-4">
+                    <img src={avatarUrl} alt="avatar" className="h-20 w-20 rounded-full object-cover" />
+                  </div>
+                )}
                 <form onSubmit={signIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="username" className="text-zinc-700 dark:text-zinc-300">
@@ -129,7 +169,7 @@ export default function LoginPage() {
 
                 <div className="mt-6 flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
                   <button className="hover:underline">{dict.login.forgot}</button>
-                  <button className="hover:underline">{dict.login.signup}</button>
+                  <a href="/signup" className="hover:underline">{dict.login.signup}</a>
                 </div>
               </CardContent>
             </Card>

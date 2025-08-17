@@ -4,7 +4,8 @@ import type React from "react"
 import { useEffect, useMemo, useState } from "react"
 import type { Difficulty, QuestionType } from "@/lib/questions"
 import { addQuestion } from "@/lib/questions"
-import { ensureCategory, getCategoryNames } from "@/lib/categories"
+import { ensureCategory /* keep existing helper */ } from "@/lib/categories"
+import { fetchCategories } from "@/lib/api/categories"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -34,10 +35,21 @@ export default function AddQuestionForm({ onAdded }: Props) {
   const dbgAnswer = useInputDebug("answer")
   const dbgCode = useInputDebug("code")
 
-  // Datalist categories
+  // Datalist categories (loaded from backend)
   const [categoryNames, setCategoryNames] = useState<string[]>([])
   useEffect(() => {
-    setCategoryNames(getCategoryNames())
+    let mounted = true
+    fetchCategories()
+      .then((cats) => {
+        if (!mounted) return
+        setCategoryNames(cats.map((c) => c.name || ""))
+      })
+      .catch(() => {
+        // keep silent and allow fallback to local ensureCategory behavior
+      })
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const mcqValidOptions = useMemo(() => options.map((o) => o.trim()).filter(Boolean), [options])
@@ -73,7 +85,11 @@ export default function AddQuestionForm({ onAdded }: Props) {
       setCode("")
       onAdded?.()
       // Refresh categories list after creating new ones
-      setCategoryNames(getCategoryNames())
+      fetchCategories()
+        .then((cats) => setCategoryNames(cats.map((c) => c.name || "")))
+        .catch(() => {
+          /* ignore */
+        })
     }, 300)
   }
 

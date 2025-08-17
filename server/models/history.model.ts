@@ -35,4 +35,5 @@ const HistorySchema: Schema<History> = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.model<History>("History", HistorySchema);
+export const History = mongoose.models.History || mongoose.model<History>("History", HistorySchema);
+export default History;

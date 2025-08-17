@@ -2,19 +2,55 @@
 
 import Link from "next/link"
 import { Menu } from "lucide-react"
+import { useEffect, useState } from 'react'
 import ThemeToggle from "@/components/theme-toggle"
 import LanguageToggle from "@/components/language-toggle"
 import GlobalSearch from "@/components/global-search"
 import { Button } from "@/components/ui/button"
+import Avatar from '@/components/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useI18n } from "./i18n"
 
 export default function Navbar() {
   const { dict } = useI18n()
+  const [user, setUser] = useState<{ username?: string; avatarUrl?: string; id?: string; _id?: string } | null>(null)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('answerly-user')
+      if (raw) {
+        setUser(JSON.parse(raw))
+      }
+    } catch (e) {
+      // ignore
+    }
+    const onStorage = () => {
+      try {
+        const raw = localStorage.getItem('answerly-user')
+        if (raw) setUser(JSON.parse(raw))
+      } catch {}
+    }
+    const onUserUpdated = (e: Event) => onStorage()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('user-updated', onUserUpdated)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('user-updated', onUserUpdated)
+    }
+  }, [])
+  // derive avatar src with cache-bust token when needed
+  const getDisplayAvatar = () => {
+    const url = user?.avatarUrl
+    if (!url) return null // Let Avatar component handle letters display
+    // if url already contains a timestamp token 't=', don't append another
+    if (url.includes('t=')) return url
+    return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
+  }
   const links = [
     { href: "/", label: dict.nav.home },
     { href: "/topics", label: dict.nav.topics },
     { href: "/history", label: dict.nav.history },
+  { href: "/leaderboard", label: dict.nav.leaderboard ?? 'Leaderboard' },
+  { href: user?.id || user?._id ? `/profile/${user.id || user._id}` : "/profile", label: dict.nav.profile ?? 'Profile' },
     { href: "/qa", label: dict.nav.qa },
     { href: "/quiz", label: dict.nav.quiz },
     { href: "/login", label: dict.nav.login },
@@ -46,6 +82,10 @@ export default function Navbar() {
           <GlobalSearch />
           <LanguageToggle />
           <ThemeToggle />
+          {/* Profile circle */}
+          <Link href={user?.id || user?._id ? `/profile/${user.id || user._id}` : "/profile"} className="ml-2">
+            <Avatar asButton={false} src={getDisplayAvatar()} name={user?.username} size={32} />
+          </Link>
         </nav>
 
         {/* Mobile menu */}
@@ -77,3 +117,4 @@ export default function Navbar() {
     </header>
   )
 }
+

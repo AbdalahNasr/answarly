@@ -10,11 +10,13 @@ type Dict = {
     home: string
     ask: string
     topics: string
-    history: string
-    qa: string
-    login: string
-    brand: string
-    quiz: string
+  history: string
+  qa: string
+  login: string
+  brand: string
+  quiz: string
+  leaderboard: string
+  profile: string
   }
   hero: {
     badge: string
@@ -49,6 +51,8 @@ const en: Dict = {
     home: "Home",
     ask: "Ask Question",
     topics: "Topics",
+  leaderboard: "Leaderboard",
+  profile: "Profile",
     history: "History",
     qa: "Q&A",
     login: "Login",
@@ -106,6 +110,8 @@ const ar: Dict = {
     home: "الرئيسية",
     ask: "اطرح سؤالاً",
     topics: "المواضيع",
+  leaderboard: "لوحة المتصدرين",
+  profile: "الملف",
     history: "السجل",
     qa: "الأسئلة والأجوبة",
     login: "تسجيل الدخول",

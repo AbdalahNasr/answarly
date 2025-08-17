@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 import PasswordReset from "../models/passwordReset.model";
 import { User } from "../models/user.model";
-import { sendEmail } from "../../lib/utils";
+import { sendEmail } from "../lib/mail";
 
 const SALT_ROUNDS = 10;
 

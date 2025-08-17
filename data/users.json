@@ -7,5 +7,32 @@
     "role": "user",
     "createdAt": "2025-08-14T16:59:57.822Z",
     "updatedAt": "2025-08-14T16:59:57.822Z"
+  },
+  {
+    "id": "5b2bc487-571e-4920-8c67-6e88c0983ff4",
+    "username": "Body Nasr",
+    "email": "body16nasr16bn@gmail.com",
+    "password": "$2b$10$En7QZx13bQhYq9lYVIZUMeIxJLTSkidjSykizmlFmss2SdF8K5Zvi",
+    "role": "user",
+    "createdAt": "2025-08-17T18:32:10.206Z",
+    "updatedAt": "2025-08-17T18:32:10.223Z"
+  },
+  {
+    "id": "f3cd340f-26ec-4990-84aa-e3f245b57ac3",
+    "username": "Body Nasr",
+    "email": "body16nasr16bn@gmail.co",
+    "password": "$2b$10$l4oj0vg/KHw2P.Lx0mb5ze9ztjw8T2ptLWTW4ev891k4gTyWHkhT.",
+    "role": "user",
+    "createdAt": "2025-08-17T18:45:38.855Z",
+    "updatedAt": "2025-08-17T18:45:38.859Z"
+  },
+  {
+    "id": "d358fecf-f395-4513-8fb3-1cc95942c14d",
+    "username": "johndoe",
+    "email": "john@examplee.com",
+    "password": "$2b$10$kXY4RWRqmo7H.wiKpmKapOrB8ZIeafk0IS2jyEx7NR4IRVC2wXleS",
+    "role": "user",
+    "createdAt": "2025-08-17T19:29:41.518Z",
+    "updatedAt": "2025-08-17T19:29:41.522Z"
   }
 ]

@@ -7,7 +7,7 @@ import * as FileSystemUserService from './user.filesystem.service';
 
 // Define common interface
 export interface UserServiceInterface {
-  registerUser: (username: string, email: string, password: string) => Promise<any>;
+  registerUser: (username: string, email: string, password: string, avatarUrl?: string) => Promise<any>;
   loginUser: (email: string, password: string) => Promise<any>;
   requestPasswordReset: (email: string) => Promise<any>;
   resetPassword: (token: string, newPassword: string) => Promise<any>;
@@ -37,8 +37,8 @@ class UserService implements UserServiceInterface {
     }
   }
 
-  async registerUser(username: string, email: string, password: string) {
-    return this.strategy.registerUser(username, email, password);
+  async registerUser(username: string, email: string, password: string, avatarUrl?: string) {
+    return this.strategy.registerUser(username, email, password, avatarUrl);
   }
 
   async loginUser(email: string, password: string) {
@@ -58,8 +58,8 @@ class UserService implements UserServiceInterface {
 export const userService = new UserService();
 
 // Export individual functions for backward compatibility
-export const registerUser = (username: string, email: string, password: string) => 
-  userService.registerUser(username, email, password);
+export const registerUser = (username: string, email: string, password: string, avatarUrl?: string) => 
+  userService.registerUser(username, email, password, avatarUrl);
 
 export const loginUser = (email: string, password: string) => 
   userService.loginUser(email, password);

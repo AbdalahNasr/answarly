@@ -3,32 +3,36 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import { User, IUser } from "../models/user.model";
-import { sendEmail } from "../../lib/utils";
+import { sendEmail } from "../lib/mail";
 import PasswordReset from "../models/passwordReset.model";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 const SALT_ROUNDS = 10;
 
-export const registerUser = async (username: string, email: string, password: string) => {
+export const registerUser = async (username: string, email: string, password: string, avatarUrl?: string) => {
   try {
+  console.log('[auth.service] registerUser: checking existing', { email });
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       throw new Error("Email already exists");
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-    const user = new User({ username, email, password: hashedPassword, role: "user" });
-    await user.save();
+  const user = new User({ username, email, password: hashedPassword, avatarUrl, role: "user" });
+  await user.save();
+  console.log('[auth.service] registerUser: saved user', { id: user._id, email: user.email });
     return user;
   } catch (error: any) {
     if (error.code === 11000) {
       throw new Error("Email already exists");
     }
+  console.error('[auth.service] registerUser: error', error && (error.stack || error.message || error));
     throw error;
   }
 };
 
 export const loginUser = async (email: string, password: string) => {
+  console.log('[auth.service] loginUser: find user', { email });
   const user = await User.findOne({ email });
   if (!user) {
     throw new Error("Invalid email or password");

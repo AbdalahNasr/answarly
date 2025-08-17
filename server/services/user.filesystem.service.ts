@@ -1,6 +1,8 @@
 // server/services/user.filesystem.service.ts
 import fs from 'fs/promises';
 import path from 'path';
+import { connectToDatabase } from '@/lib/db';
+import { User as DbUserModel } from '@/server/models/user.model';
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
@@ -14,26 +16,28 @@ const USERS_FILE: string = path.join(DATA_DIR, 'users.json');
 const PASSWORD_RESETS_FILE: string = path.join(DATA_DIR, 'password-resets.json');
 
 // TypeScript interfaces
-export interface IUser {
+interface IUser {
   id: string;
   username: string;
   email: string;
   password: string;
+  avatarUrl?: string;
   role: "user" | "admin";
   createdAt: string;
   updatedAt: string;
 }
 
-export interface IUserWithoutPassword {
+interface IUserWithoutPassword {
   id: string;
   username: string;
   email: string;
+  avatarUrl?: string;
   role: "user" | "admin";
   createdAt: string;
   updatedAt: string;
 }
 
-export interface IPasswordReset {
+interface IPasswordReset {
   id: string;
   userId: string;
   token: string;
@@ -41,7 +45,7 @@ export interface IPasswordReset {
   createdAt: string;
 }
 
-export interface LoginResult {
+interface LoginResult {
   token: string;
   user: {
     id: string;
@@ -51,37 +55,37 @@ export interface LoginResult {
   };
 }
 
-export interface PasswordResetResult {
+interface PasswordResetResult {
   message: string;
 }
 
 // Custom error classes for better TypeScript error handling
-export class FileSystemUserError extends Error {
+class FileSystemUserError extends Error {
   constructor(message: string, public code?: string) {
     super(message);
     this.name = 'FileSystemUserError';
   }
 }
 
-export class UserNotFoundError extends FileSystemUserError {
+class UserNotFoundError extends FileSystemUserError {
   constructor(identifier: string) {
     super(`User not found: ${identifier}`, 'USER_NOT_FOUND');
   }
 }
 
-export class EmailAlreadyExistsError extends FileSystemUserError {
+class EmailAlreadyExistsError extends FileSystemUserError {
   constructor(email: string) {
     super(`Email already exists: ${email}`, 'EMAIL_EXISTS');
   }
 }
 
-export class InvalidCredentialsError extends FileSystemUserError {
+class InvalidCredentialsError extends FileSystemUserError {
   constructor() {
     super('Invalid email or password', 'INVALID_CREDENTIALS');
   }
 }
 
-export class TokenExpiredError extends FileSystemUserError {
+class TokenExpiredError extends FileSystemUserError {
   constructor() {
     super('Token has expired', 'TOKEN_EXPIRED');
   }
@@ -99,8 +103,11 @@ const ensureDataDirectory = async (): Promise<void> => {
 const readUsersFile = async (): Promise<IUser[]> => {
   try {
     await ensureDataDirectory();
-    const data: string = await fs.readFile(USERS_FILE, 'utf-8');
-    return JSON.parse(data) as IUser[];
+  console.log('[user.filesystem] readUsersFile: reading', USERS_FILE);
+  const data: string = await fs.readFile(USERS_FILE, 'utf-8');
+  const parsed = JSON.parse(data) as IUser[];
+  console.log('[user.filesystem] readUsersFile: loaded', parsed.length, 'users');
+  return parsed;
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       return [];
@@ -111,8 +118,10 @@ const readUsersFile = async (): Promise<IUser[]> => {
 
 const writeUsersFile = async (users: IUser[]): Promise<void> => {
   try {
-    await ensureDataDirectory();
-    await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+  await ensureDataDirectory();
+  console.log('[user.filesystem] writeUsersFile: writing', USERS_FILE, 'usersCount=', users.length);
+  await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+  console.log('[user.filesystem] writeUsersFile: write complete');
   } catch (error: any) {
     throw new FileSystemUserError(`Failed to write users file: ${error.message}`);
   }
@@ -144,7 +153,8 @@ const writePasswordResetsFile = async (resets: IPasswordReset[]): Promise<void> 
 export const registerUser = async (
   username: string, 
   email: string, 
-  password: string
+  password: string,
+  avatarUrl?: string
 ): Promise<IUserWithoutPassword> => {
   try {
     // Input validation
@@ -152,7 +162,7 @@ export const registerUser = async (
       throw new FileSystemUserError('All fields are required');
     }
 
-    const users: IUser[] = await readUsersFile();
+  const users: IUser[] = await readUsersFile();
     
     // Check if user already exists
     const existingUser: IUser | undefined = users.find(
@@ -170,6 +180,7 @@ export const registerUser = async (
       username: username.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
+  avatarUrl: avatarUrl?.trim() || undefined,
       role: "user",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -177,6 +188,32 @@ export const registerUser = async (
 
     users.push(newUser);
     await writeUsersFile(users);
+    console.log('[user.filesystem] registerUser: user added', { id: newUser.id, email: newUser.email });
+
+    // Mirror to MongoDB asynchronously (best-effort). Do not block registration on DB.
+    (async () => {
+      try {
+        await connectToDatabase();
+        const existing = await DbUserModel.findOne({ email: newUser.email });
+        if (!existing) {
+          const doc = new DbUserModel({
+            username: newUser.username,
+            email: newUser.email,
+            password: newUser.password, // already hashed
+            avatarUrl: newUser.avatarUrl,
+            role: newUser.role,
+            createdAt: newUser.createdAt,
+            updatedAt: newUser.updatedAt,
+          });
+          await doc.save();
+          console.log('[user.filesystem] registerUser: mirrored to DB', { email: newUser.email });
+        } else {
+          console.log('[user.filesystem] registerUser: DB already has email, skipping mirror', { email: newUser.email });
+        }
+      } catch (err: any) {
+        console.error('[user.filesystem] registerUser: mirror to DB failed', err && (err.message || err));
+      }
+    })();
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = newUser;
@@ -378,6 +415,16 @@ export const deleteUser = async (userId: string): Promise<void> => {
     }
     
     await writeUsersFile(filteredUsers);
+    // Mirror delete to MongoDB (best-effort)
+    (async () => {
+      try {
+        await connectToDatabase();
+        const res = await DbUserModel.deleteOne({ id: userId });
+        console.log('[user.filesystem] deleteUser: mirrored delete to DB', { userId, deletedCount: res.deletedCount });
+      } catch (err: any) {
+        console.error('[user.filesystem] deleteUser: mirror to DB failed', err && (err.message || err));
+      }
+    })();
   } catch (error: any) {
     if (error instanceof FileSystemUserError) {
       throw error;
@@ -426,6 +473,36 @@ export const updateUser = async (
     };
 
     await writeUsersFile(users);
+        // Mirror update to MongoDB (best-effort)
+        (async () => {
+          try {
+            await connectToDatabase();
+            const dbUser = await DbUserModel.findOne({ id: users[userIndex].id });
+            if (dbUser) {
+              if (updates.username) dbUser.username = users[userIndex].username;
+              if (updates.email) dbUser.email = users[userIndex].email;
+              if (updates.role) dbUser.role = users[userIndex].role as any;
+              dbUser.updatedAt = users[userIndex].updatedAt as any;
+              await dbUser.save();
+              console.log('[user.filesystem] updateUser: mirrored update to DB', { id: users[userIndex].id });
+            } else {
+              // try create if missing
+              const doc = new DbUserModel({
+                username: users[userIndex].username,
+                email: users[userIndex].email,
+                password: users[userIndex].password,
+                avatarUrl: users[userIndex].avatarUrl,
+                role: users[userIndex].role,
+                createdAt: users[userIndex].createdAt,
+                updatedAt: users[userIndex].updatedAt,
+              });
+              await doc.save();
+              console.log('[user.filesystem] updateUser: created missing DB user during mirror', { id: users[userIndex].id });
+            }
+          } catch (err: any) {
+            console.error('[user.filesystem] updateUser: mirror to DB failed', err && (err.message || err));
+          }
+        })();
 
     const { password, ...userWithoutPassword } = users[userIndex];
     return userWithoutPassword;
@@ -453,5 +530,4 @@ export const cleanupExpiredResets = async (): Promise<void> => {
   }
 };
 
-// Export types for external use
-export type { IUser, IUserWithoutPassword, IPasswordReset, LoginResult, PasswordResetResult };
+// Note: types are declared in types/filesystem.d.ts for external use.

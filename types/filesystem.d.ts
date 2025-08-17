@@ -6,6 +6,7 @@ export interface IUser {
   username: string;
   email: string;
   password: string;
+  avatarUrl?: string;
   role: "user" | "admin";
   createdAt: string;
   updatedAt: string;
@@ -15,6 +16,7 @@ export interface IUserWithoutPassword {
   id: string;
   username: string;
   email: string;
+  avatarUrl?: string;
   role: "user" | "admin";
   createdAt: string;
   updatedAt: string;
@@ -60,7 +62,7 @@ export interface UserUpdateData {
 }
 
 export interface UserServiceInterface {
-  registerUser(username: string, email: string, password: string): Promise<IUserWithoutPassword>;
+  registerUser(username: string, email: string, password: string, avatarUrl?: string): Promise<IUserWithoutPassword>;
   loginUser(email: string, password: string): Promise<LoginResult>;
   requestPasswordReset(email: string): Promise<PasswordResetResult>;
   resetPassword(token: string, newPassword: string): Promise<PasswordResetResult>;
@@ -70,7 +72,7 @@ export type StorageStrategy = 'database' | 'filesystem';
 
 // File system specific function types
 export interface FileSystemUserService {
-  registerUser(username: string, email: string, password: string): Promise<IUserWithoutPassword>;
+  registerUser(username: string, email: string, password: string, avatarUrl?: string): Promise<IUserWithoutPassword>;
   loginUser(email: string, password: string): Promise<LoginResult>;
   findUserByEmail(email: string): Promise<IUser | null>;
   findUserById(id: string): Promise<IUser | null>;
