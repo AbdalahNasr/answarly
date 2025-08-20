@@ -1,25 +1,73 @@
 import { connectToDatabase } from '../../lib/db';
 import Question from '../models/question.model';
 import History from '../models/history.model';
+import Category from '../models/category.model';
+import SubCategory from '../models/subcategory.model';
 import { Types } from 'mongoose';
 
-export async function startQuiz(opts: { categoryId?: string; subCategoryId?: string; difficulty?: string; limit?: number }) {
+export async function startQuiz(opts: { categoryId?: string; subCategoryId?: string; difficulty?: string; limit?: number; questionType?: string }) {
 	await connectToDatabase();
 	const filter: any = {};
-	if (opts.categoryId && Types.ObjectId.isValid(opts.categoryId)) filter.category = opts.categoryId;
-	if (opts.subCategoryId && Types.ObjectId.isValid(opts.subCategoryId)) filter.subCategory = opts.subCategoryId;
+	
+	// Handle category filtering with hierarchical support
+	if (opts.categoryId) {
+		if (Types.ObjectId.isValid(opts.categoryId)) {
+			// If it's a valid ObjectId, use it directly
+			filter.category = opts.categoryId;
+		} else {
+			// If not a valid ObjectId, treat as custom category name
+			// Find or create category by name
+			let category = await Category.findOne({ name: opts.categoryId, isActive: true }).lean();
+			if (!category) {
+				// Create new category
+				const newCategory = new Category({ 
+					name: opts.categoryId,
+					level: 0,
+					path: [opts.categoryId],
+					isActive: true
+				});
+				category = await newCategory.save();
+			}
+			filter.category = category._id;
+		}
+	}
+	
+	// Handle subcategory filtering (now part of hierarchical categories)
+	if (opts.subCategoryId && Types.ObjectId.isValid(opts.subCategoryId)) {
+		// For now, we'll use the subCategoryId as a direct category filter
+		// In the future, this could be enhanced to find questions in subcategories
+		filter.category = opts.subCategoryId;
+	}
+	
 	if (opts.difficulty) filter.difficulty = opts.difficulty;
+	
+	// Handle question type filtering (for now, all questions are multiple choice)
+	// In the future, you can add a type field to the Question model
+	// if (opts.questionType) filter.type = opts.questionType;
+	
 	const limit = opts.limit && opts.limit > 0 ? opts.limit : 10;
-	const questions = await Question.find(filter).limit(limit).lean();
+	
+	// Get questions with populated category
+	const questions = await Question.find(filter)
+		.populate('category', 'name path level')
+		.limit(limit)
+		.lean();
+	
+	// Use the requested question type
+	const questionType = opts.questionType || 'multiple_choice';
+	
 	// Do not expose correctAnswer
 	const payload = questions.map((q: any) => ({
 		id: q._id,
-		text: q.text,
+		question: q.text, // Map text to question for frontend compatibility
+		type: questionType, // Use the requested question type
 		options: q.options,
 		difficulty: q.difficulty,
-		category: q.category,
-		subCategory: q.subCategory,
+		category: q.category?.name || 'Unknown', // Use category name
+		categoryPath: q.category?.path || [], // Use category path for hierarchical display
+		categoryLevel: q.category?.level || 0, // Use category level
 	}));
+	
 	return { questions: payload };
 }
 

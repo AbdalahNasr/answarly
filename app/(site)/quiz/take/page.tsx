@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { pickQuestions, type QuizParams } from "@/lib/quiz"
+import { startQuiz } from "@/lib/quiz"
 import QuizQuestion from "@/components/quiz-question"
 import type { Question } from "@/lib/questions"
 import { Card } from "@/components/ui/card"
@@ -19,16 +19,45 @@ export default function TakeQuizPage() {
   const params = useSearchParams()
   const router = useRouter()
 
-  const quizParams: QuizParams = {
-    category: params.get("category") || "all",
-    level: (params.get("level") as any) || "all",
-    count: Number(params.get("count") || 5),
-  }
-
-  const initialQuestions = useMemo(() => pickQuestions(quizParams), [params])
-  const [questions, setQuestions] = useState<Question[]>(initialQuestions)
+  const [questions, setQuestions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState<AnswerMap>({})
+
+  // Get quiz parameters
+  const categoryId = params.get("category") || ""
+  const subcatId = params.get("subcat") || ""
+  const level = (params.get("level") || "") as "easy" | "medium" | "hard" | "all" | ""
+  const count = Math.max(1, Math.min(Number(params.get("count") || 5), 50))
+
+  // Fetch questions from database
+  useEffect(() => {
+    async function fetchQuestions() {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const quizOptions = {
+          category: categoryId === "all" ? undefined : categoryId,
+          subCategoryId: subcatId === "all" ? undefined : subcatId,
+          difficulty: level === "all" ? undefined : level,
+          limit: count
+        }
+        
+        const result = await startQuiz(quizOptions)
+        setQuestions(result.questions || [])
+      } catch (err) {
+        console.error('Failed to fetch questions:', err)
+        setError('Failed to load questions. Please try again.')
+        setQuestions([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchQuestions()
+  }, [categoryId, subcatId, level, count])
 
   const current = questions[idx]
   const total = questions.length
@@ -55,11 +84,70 @@ export default function TakeQuizPage() {
   }
 
   function retake() {
-    const newQs = pickQuestions(quizParams)
-    setQuestions(newQs)
     setAnswers({})
     setIdx(0)
     setFinished(false)
+  }
+
+  if (loading) {
+    return (
+      <main>
+        <DebugPageListeners page="quiz-take" />
+        <section className="w-full">
+          <div className="container mx-auto px-4 md:px-6 py-10 md:py-16">
+            <div className="text-center">
+              <p className="text-zinc-600 dark:text-zinc-400">Loading questions...</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main>
+        <DebugPageListeners page="quiz-take" />
+        <section className="w-full">
+          <div className="container mx-auto px-4 md:px-6 py-10 md:py-16">
+            <div className="text-center">
+              <p className="text-red-600 dark:text-red-400">{error}</p>
+              <Link href="/quiz/setup">
+                <Button 
+                  variant="outline" 
+                  className="mt-4 rounded-full bg-transparent"
+                >
+                  Back to Setup
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  if (questions.length === 0) {
+    return (
+      <main>
+        <DebugPageListeners page="quiz-take" />
+        <section className="w-full">
+          <div className="container mx-auto px-4 md:px-6 py-10 md:py-16">
+            <div className="text-center">
+              <p className="text-zinc-600 dark:text-zinc-400">No questions found for this selection.</p>
+              <Link href="/quiz/setup">
+                <Button 
+                  variant="outline" 
+                  className="mt-4 rounded-full bg-transparent"
+                >
+                  Back to Setup
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
   }
 
   return (
@@ -69,10 +157,10 @@ export default function TakeQuizPage() {
         <div className="container mx-auto px-4 md:px-6 py-10 md:py-16">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Quiz: {quizParams.category} • {quizParams.level} • {total} questions
+              Quiz: {categoryId === "all" ? "All Categories" : categoryId} • {level === "all" ? "All Levels" : level} • {total} questions
             </h1>
             <div className="flex gap-2">
-              <Link href="/quiz">
+              <Link href="/quiz/setup">
                 <Button
                   variant="outline"
                   className="rounded-full border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5"

@@ -4,8 +4,8 @@ import * as QuizService from '../services/quiz.service';
 export async function startQuiz(req: NextRequest) {
 	try {
 		const body = await req.json();
-		const { categoryId, subCategoryId, difficulty, limit } = body || {};
-		const result = await QuizService.startQuiz({ categoryId, subCategoryId, difficulty, limit });
+		const { categoryId, subCategoryId, difficulty, limit, questionType } = body || {};
+		const result = await QuizService.startQuiz({ categoryId, subCategoryId, difficulty, limit, questionType });
 		return NextResponse.json(result);
 	} catch (error: any) {
 		return NextResponse.json({ error: error.message }, { status: 400 });

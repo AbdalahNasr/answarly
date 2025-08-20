@@ -1,7 +1,13 @@
 // lib/quiz.ts
 import type { Question } from './questions'
 
-export type QuizOptions = { category?: string; level?: string; count?: number }
+export type QuizOptions = { 
+  category?: string; 
+  subCategoryId?: string;
+  difficulty?: string; 
+  limit?: number;
+  questionType?: string;
+}
 
 export async function startQuiz(opts: QuizOptions) {
 	// forward to backend API if available
@@ -9,7 +15,13 @@ export async function startQuiz(opts: QuizOptions) {
 		const res = await fetch(`/api/quiz?action=start`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ categoryId: opts.category, difficulty: opts.level, limit: opts.count }),
+			body: JSON.stringify({ 
+				categoryId: opts.category, 
+				subCategoryId: opts.subCategoryId,
+				difficulty: opts.difficulty, 
+				limit: opts.limit,
+				questionType: opts.questionType
+			}),
 		})
 		if (!res.ok) return { questions: [] }
 		return res.json()

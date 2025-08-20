@@ -3,7 +3,7 @@ import Question from '../models/question.model';
 import SubCategory from '../models/subcategory.model';
 import { Types } from 'mongoose';
 
-export async function createQuestion(data: { text: string; options: string[]; correctAnswer: string; category: string; subCategory?: string; difficulty?: string }) {
+export async function createQuestion(data: { text: string; options: string[]; correctAnswer: string; category: string; subCategory?: string; reason?: string; difficulty?: string }) {
 	await connectToDatabase();
 	if (data.subCategory && !Types.ObjectId.isValid(data.subCategory)) throw new Error('Invalid subCategory id');
 	const q = new Question({
@@ -12,6 +12,7 @@ export async function createQuestion(data: { text: string; options: string[]; co
 		correctAnswer: data.correctAnswer,
 		category: data.category,
 		subCategory: data.subCategory,
+		reason: data.reason,
 		difficulty: data.difficulty || 'medium',
 	});
 	return q.save();

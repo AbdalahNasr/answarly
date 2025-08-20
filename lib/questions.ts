@@ -10,6 +10,8 @@ export type Question = {
 	answer?: string
 	code?: string
 	category: string
+	subcategory?: string
+	reason?: string
 	difficulty?: Difficulty
 }
 

@@ -1,5 +1,5 @@
 import { connectToDatabase } from "@/lib/db";
-import User from "@/models/User";
+import User from "@/server/models/user.model";
 import { NextRequest } from "next/server";
 
 // GET - Retrieve all users

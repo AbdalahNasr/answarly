@@ -144,6 +144,12 @@ export default function QuizQuestion({
                 </Button>
               )
             })}
+            {(value as any)?.tf && question.reason && (
+              <div className="col-span-2 mt-2 rounded-xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5 p-3 text-sm text-zinc-700 dark:text-zinc-300">
+                <strong className="block mb-1">Reason:</strong>
+                <span>{question.reason}</span>
+              </div>
+            )}
           </div>
         )}
 
