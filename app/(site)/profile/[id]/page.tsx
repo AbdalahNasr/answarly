@@ -228,6 +228,13 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           </div>
           {/* action buttons moved below */}
           <div className="mt-4 flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => router.push('/my-questions')}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-0"
+            >
+              My Questions
+            </Button>
             <Dialog open={passwordOpen} onOpenChange={(open) => setPasswordOpen(open)}>
               <DialogTrigger asChild>
                 <Button variant="outline">Change password</Button>

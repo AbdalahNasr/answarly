@@ -21,7 +21,20 @@ export const registerUser = async (username: string, email: string, password: st
   const user = new User({ username, email, password: hashedPassword, avatarUrl, role: "user" });
   await user.save();
   console.log('[auth.service] registerUser: saved user', { id: user._id, email: user.email });
-    return user;
+    
+    // Generate JWT token for automatic login
+    const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
+    
+    return { 
+      token, 
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email, 
+        role: user.role,
+        avatarUrl: user.avatarUrl
+      } 
+    };
   } catch (error: any) {
     if (error.code === 11000) {
       throw new Error("Email already exists");
@@ -50,7 +63,8 @@ export const loginUser = async (email: string, password: string) => {
       id: user._id, 
       username: user.username, 
       email: user.email, 
-      role: user.role 
+      role: user.role,
+      avatarUrl: user.avatarUrl
     } 
   };
 };

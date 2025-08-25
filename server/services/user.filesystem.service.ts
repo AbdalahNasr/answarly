@@ -52,6 +52,7 @@ interface LoginResult {
     username: string;
     email: string;
     role: "user" | "admin";
+    avatarUrl?: string;
   };
 }
 
@@ -155,7 +156,7 @@ export const registerUser = async (
   email: string, 
   password: string,
   avatarUrl?: string
-): Promise<IUserWithoutPassword> => {
+): Promise<LoginResult> => {
   try {
     // Input validation
     if (!username?.trim() || !email?.trim() || !password?.trim()) {
@@ -215,9 +216,23 @@ export const registerUser = async (
       }
     })();
 
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = newUser;
-    return userWithoutPassword;
+    // Generate JWT token for automatic login
+    const token: string = jwt.sign(
+      { userId: newUser.id, role: newUser.role }, 
+      JWT_SECRET, 
+      { expiresIn: "1d" }
+    );
+
+    return { 
+      token, 
+      user: { 
+        id: newUser.id, 
+        username: newUser.username, 
+        email: newUser.email, 
+        role: newUser.role,
+        avatarUrl: newUser.avatarUrl
+      } 
+    };
   } catch (error: any) {
     if (error instanceof FileSystemUserError) {
       throw error;
@@ -259,7 +274,8 @@ export const loginUser = async (email: string, password: string): Promise<LoginR
         id: user.id, 
         username: user.username, 
         email: user.email, 
-        role: user.role 
+        role: user.role,
+        avatarUrl: user.avatarUrl
       } 
     };
   } catch (error: any) {

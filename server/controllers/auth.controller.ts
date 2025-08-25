@@ -9,35 +9,42 @@ import { saveBase64Image } from '../lib/file-store'
 
 export async function register(req: NextRequest) {
   try {
-  const { username, email, password, avatarUrl, avatarBase64, avatarFilename } = await req.json();
+    const { username, email, password, avatarUrl, avatarBase64, avatarFilename } = await req.json();
 
-  console.log('[auth.controller] register: received', { username, email, hasAvatarBase64: !!avatarBase64, avatarFilename });
+    console.log('[auth.controller] register: received', { username, email, hasAvatarBase64: !!avatarBase64, avatarFilename });
 
-  let finalAvatarUrl: string | undefined = undefined
-  if (avatarBase64 && avatarFilename) {
-    finalAvatarUrl = await saveBase64Image(avatarBase64, avatarFilename)
-  } else if (avatarUrl) {
-    finalAvatarUrl = avatarUrl
-  }
+    let finalAvatarUrl: string | undefined = undefined
+    if (avatarBase64 && avatarFilename) {
+      finalAvatarUrl = await saveBase64Image(avatarBase64, avatarFilename)
+    } else if (avatarUrl) {
+      finalAvatarUrl = avatarUrl
+    }
 
-  const user = await UserService.registerUser(username, email, password, finalAvatarUrl);
-  console.log('[auth.controller] register: created user', { id: user?.id || user?._id, email: user?.email });
-    return NextResponse.json({ message: "User registered", user }, { status: 201 });
+    // Ensure database connection is established
+    await connectToDatabase();
+
+    const result = await UserService.registerUser(username, email, password, finalAvatarUrl);
+    console.log('[auth.controller] register: created user', { id: result.user?.id || result.user?._id, email: result.user?.email });
+    return NextResponse.json({ message: "User registered", user: result.user, token: result.token }, { status: 201 });
   } catch (error: any) {
-  console.error('[auth.controller] register: error', error && (error.stack || error.message || error));
+    console.error('[auth.controller] register: error', error && (error.stack || error.message || error));
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
 
 export async function login(req: NextRequest) {
   try {
-  const { email, password } = await req.json();
-  console.log('[auth.controller] login: attempt', { email });
-  const { token, user } = await UserService.loginUser(email, password);
-  console.log('[auth.controller] login: success', { id: user?.id || user?._id, email: user?.email });
+    const { email, password } = await req.json();
+    console.log('[auth.controller] login: attempt', { email });
+    
+    // Ensure database connection is established
+    await connectToDatabase();
+    
+    const { token, user } = await UserService.loginUser(email, password);
+    console.log('[auth.controller] login: success', { id: user?.id || user?._id, email: user?.email });
     return NextResponse.json({ token, user });
   } catch (error: any) {
-  console.error('[auth.controller] login: error', error && (error.stack || error.message || error));
+    console.error('[auth.controller] login: error', error && (error.stack || error.message || error));
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
 }

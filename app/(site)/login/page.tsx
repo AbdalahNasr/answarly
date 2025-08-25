@@ -15,7 +15,9 @@ import GradientLoader from "@/components/gradient-loader"
 
 export default function LoginPage() {
   const { dict, lang } = useI18n()
-  const [username, setUsername] = useState("")
+  const router = useRouter()
+  const { toast } = useToast()
+  const [email, setEmail] = useState("")
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -28,7 +30,7 @@ export default function LoginPage() {
       if (raw) {
         const parsed = JSON.parse(raw)
         setAvatarUrl(parsed.avatarUrl || null)
-        setUsername(parsed.username || '')
+        setEmail(parsed.email || '')
       }
     } catch {}
   }, [lang])
@@ -37,13 +39,11 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setMessage("")
-    const router = useRouter()
-    const { toast } = useToast()
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: username, password }),
+        body: JSON.stringify({ email: email, password }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -54,13 +54,12 @@ export default function LoginPage() {
       }
       try { localStorage.setItem('answerly-user', JSON.stringify(data.user)) } catch {}
       try { localStorage.setItem('answerly-token', data.token) } catch {}
-      toast({ title: 'Signed in', description: 'Redirecting to profile...' })
-      const uid = data.user?.id || data.user?._id
-      if (uid) {
-        setTimeout(() => router.push(`/profile/${uid}`), 400)
-      } else {
-        setTimeout(() => router.push('/profile'), 400)
-      }
+      toast({ title: 'Signed in', description: 'Welcome back! Redirecting to home...' })
+      
+      // Notify navbar to update
+      window.dispatchEvent(new Event('user-updated'))
+      
+      setTimeout(() => router.push('/'), 400)
     } catch (err: any) {
       toast({ title: 'Sign in failed', description: err.message || 'Please try again', variant: 'destructive' })
       setMessage(err.message || 'Error')
@@ -97,15 +96,16 @@ export default function LoginPage() {
                 )}
                 <form onSubmit={signIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="username" className="text-zinc-700 dark:text-zinc-300">
+                    <Label htmlFor="email" className="text-zinc-700 dark:text-zinc-300">
                       {dict.login.username}
                     </Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                       <Input
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         placeholder={dict.login.usernamePh}
                         className="pl-9 rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
                         required

@@ -1,64 +1,151 @@
 "use client"
 
 import Link from "next/link"
-import { Menu } from "lucide-react"
-import { useEffect, useState } from 'react'
-import ThemeToggle from "@/components/theme-toggle"
-import LanguageToggle from "@/components/language-toggle"
-import GlobalSearch from "@/components/global-search"
+import { useI18n } from "@/components/i18n"
 import { Button } from "@/components/ui/button"
-import Avatar from '@/components/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useI18n } from "./i18n"
+import { Avatar } from "@/components/ui/avatar"
+import { AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import GlobalSearch from "@/components/global-search"
+import LanguageToggle from "@/components/language-toggle"
+import ThemeToggle from "@/components/theme-toggle"
+import { LogOut, User, FileText, Menu } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react"
 
 export default function Navbar() {
-  const { dict } = useI18n()
-  const [user, setUser] = useState<{ username?: string; avatarUrl?: string; id?: string; _id?: string } | null>(null)
+  const { dict, lang } = useI18n()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [user, setUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [avatarLoaded, setAvatarLoaded] = useState(false)
+  
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('answerly-user')
-      if (raw) {
-        setUser(JSON.parse(raw))
-      }
-    } catch (e) {
-      // ignore
-    }
-    const onStorage = () => {
+    const loadUserData = () => {
       try {
         const raw = localStorage.getItem('answerly-user')
-        if (raw) setUser(JSON.parse(raw))
-      } catch {}
+        const token = localStorage.getItem('answerly-token')
+        
+        console.log('Navbar useEffect - localStorage contents:', {
+          raw,
+          token,
+          hasRaw: !!raw,
+          hasToken: !!token
+        })
+        
+        if (raw && token) {
+          const userData = JSON.parse(raw)
+          console.log('Navbar useEffect - parsed user data:', userData)
+          setUser(userData)
+        } else {
+          setUser(null)
+        }
+      } catch (e) {
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    const onUserUpdated = (e: Event) => onStorage()
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('user-updated', onUserUpdated)
-    return () => {
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener('user-updated', onUserUpdated)
-    }
+
+    loadUserData()
+    
+    // Reduce frequency to prevent constant re-renders
+    const interval = setInterval(loadUserData, 5000) // Changed from 1000ms to 5000ms
+    
+    return () => clearInterval(interval)
   }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('answerly-user')
+    localStorage.removeItem('answerly-token')
+    setUser(null)
+    toast({ title: 'Logged out', description: 'You have been successfully logged out.' })
+    router.push('/')
+  }
+
+  // Force refresh user data from localStorage
+  const refreshUserData = () => {
+    try {
+      const raw = localStorage.getItem('answerly-user')
+      const token = localStorage.getItem('answerly-token')
+      
+      console.log('Refreshing user data:', { raw, token })
+      
+      if (raw && token) {
+        const userData = JSON.parse(raw)
+        console.log('Parsed user data:', userData)
+        setUser(userData)
+      } else {
+        setUser(null)
+      }
+    } catch (e) {
+      console.error('Error refreshing user data:', e)
+      setUser(null)
+    }
+  }
+
   // derive avatar src with cache-bust token when needed
   const getDisplayAvatar = () => {
     const url = user?.avatarUrl
+    console.log('Navbar Avatar Debug:', { 
+      user, 
+      avatarUrl: url,
+      hasUser: !!user,
+      userId: user?.id || user?._id,
+      username: user?.username,
+      localStorage: {
+        user: localStorage.getItem('answerly-user'),
+        token: localStorage.getItem('answerly-token')
+      }
+    })
+    
     if (!url) return null // Let Avatar component handle letters display
-    // if url already contains a timestamp token 't=', don't append another
-    if (url.includes('t=')) return url
-    return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
+    
+    // Only add cache busting if the URL doesn't already have a timestamp
+    // This prevents constant flickering
+    if (url.includes('t=') || url.includes('timestamp=')) return url
+    
+    // Add cache busting parameter with a stable timestamp based on user ID
+    const separator = url.includes('?') ? '&' : '?'
+    const timestamp = user?.id || user?._id || Date.now()
+    return `${url}${separator}t=${timestamp}`
   }
-  const links = [
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('answerly-token') : null
+  const isLoggedIn = (user?.id || user?._id) && token
+
+  const mainLinks = [
     { href: "/", label: dict.nav.home },
     { href: "/topics", label: dict.nav.topics },
     { href: "/history", label: dict.nav.history },
-  { href: "/leaderboard", label: dict.nav.leaderboard ?? 'Leaderboard' },
-  { href: user?.id || user?._id ? `/profile/${user.id || user._id}` : "/profile", label: dict.nav.profile ?? 'Profile' },
+    { href: "/leaderboard", label: dict.nav.leaderboard },
     { href: "/qa", label: dict.nav.qa },
     { href: "/quiz", label: dict.nav.quiz },
-    { href: "/login", label: dict.nav.login },
   ]
+
+  // Add My Questions link if user is logged in
+  const userLinks = isLoggedIn ? [
+    { href: "/my-questions", label: dict.nav.myQuestions }
+  ] : []
+
+  // Auth link (login/logout)
+  const authLink = isLoggedIn 
+    ? { href: "#", label: dict.nav.logout, onClick: handleLogout, isButton: true }
+    : { href: "/login", label: dict.nav.login }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/40 dark:border-white/10 bg-gradient-to-b from-white/70 to-white/40 dark:from-[#0a0b1a]/70 dark:to-[#0a0b1a]/40 backdrop-blur supports-[backdrop-filter]:bg-transparent transition-colors duration-500">
       <div className="container mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
+        {/* Left side - Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="relative flex h-8 w-8 items-center justify-center rounded-xl text-white">
             <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-fuchsia-600 via-indigo-600 to-pink-600" />
@@ -68,25 +155,101 @@ export default function Navbar() {
           <span className="sr-only">Answerly Home</span>
         </Link>
 
-        {/* Desktop nav */}
+        {/* Center - Main navigation links */}
         <nav className="hidden md:flex items-center gap-6 text-sm">
-          {links.map((l) => (
+          {mainLinks.map((l) => (
             <Link
               key={l.href}
               href={l.href}
+              prefetch={true}
               className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
             >
               {l.label}
             </Link>
           ))}
+          {userLinks.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              prefetch={true}
+              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-medium"
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Right side - Search, Language, Theme, Auth */}
+        <div className="flex items-center gap-4">
           <GlobalSearch />
           <LanguageToggle />
           <ThemeToggle />
-          {/* Profile circle */}
-          <Link href={user?.id || user?._id ? `/profile/${user.id || user._id}` : "/profile"} className="ml-2">
-            <Avatar asButton={false} src={getDisplayAvatar()} name={user?.username} size={32} />
-          </Link>
-        </nav>
+          
+          {/* Auth Link - Only show login link when not logged in */}
+          {!isLoggedIn && (
+            <Link
+              href="/login"
+              prefetch={true}
+              className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              {dict.nav.login}
+            </Link>
+          )}
+          
+          {/* Profile Avatar - Only show when logged in */}
+          {isLoggedIn && user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage 
+                      src={getDisplayAvatar() || ''} 
+                      alt={user.username || 'User'}
+                      onLoad={() => setAvatarLoaded(true)}
+                      onError={() => setAvatarLoaded(false)}
+                    />
+                    <AvatarFallback>
+                      {user.username ? 
+                        user.username.split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() 
+                        : 'U'
+                      }
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user.username}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={`/profile/${user.id || user._id}`} prefetch={true}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/my-questions" prefetch={true}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>{dict.nav.myQuestions}</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={refreshUserData}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Refresh Data</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>{dict.nav.logout}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
         {/* Mobile menu */}
         <div className="md:hidden flex items-center gap-2">
@@ -105,11 +268,26 @@ export default function Navbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
-              {links.map((l) => (
+              {mainLinks.map((l) => (
                 <DropdownMenuItem key={l.href} asChild>
                   <Link href={l.href}>{l.label}</Link>
                 </DropdownMenuItem>
               ))}
+              {userLinks.map((l) => (
+                <DropdownMenuItem key={l.href} asChild>
+                  <Link href={l.href} className="text-indigo-600 dark:text-indigo-400">{l.label}</Link>
+                </DropdownMenuItem>
+              ))}
+              {authLink.isButton ? (
+                <DropdownMenuItem onClick={authLink.onClick} className="text-red-600 dark:text-red-400">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {authLink.label}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild>
+                  <Link href={authLink.href}>{authLink.label}</Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

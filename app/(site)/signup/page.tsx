@@ -74,13 +74,13 @@ export default function SignupPage() {
       }
       // persist user locally and show toast
       try { localStorage.setItem('answerly-user', JSON.stringify(data.user)) } catch {}
-      toast({ title: 'Account created', description: 'Welcome! Redirecting to profile.' })
-      const uid = data.user?.id || data.user?._id
-      if (uid) {
-        setTimeout(() => router.push(`/profile/${uid}`), 400)
-      } else {
-        setTimeout(() => router.push('/profile'), 400)
-      }
+      try { localStorage.setItem('answerly-token', data.token) } catch {}
+      toast({ title: 'Account created', description: 'Welcome! Redirecting to home.' })
+      
+      // Notify navbar to update
+      window.dispatchEvent(new Event('user-updated'))
+      
+      setTimeout(() => router.push('/'), 400)
     } catch (err: any) {
       toast({ title: 'Registration failed', description: err.message || 'Please try again', variant: 'destructive' })
       setMessage(err.message || "Error")

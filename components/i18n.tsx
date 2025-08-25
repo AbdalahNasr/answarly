@@ -10,13 +10,15 @@ type Dict = {
     home: string
     ask: string
     topics: string
-  history: string
-  qa: string
-  login: string
-  brand: string
-  quiz: string
-  leaderboard: string
-  profile: string
+    history: string
+    qa: string
+    login: string
+    brand: string
+    quiz: string
+    leaderboard: string
+    profile: string
+    myQuestions: string
+    logout: string
   }
   hero: {
     badge: string
@@ -58,6 +60,8 @@ const en: Dict = {
     login: "Login",
     brand: "Answerly",
     quiz: "Quiz",
+    myQuestions: "My Questions",
+    logout: "Logout",
   },
   hero: {
     badge: "Ask. Answer. Grow together.",
@@ -77,8 +81,8 @@ const en: Dict = {
   },
   login: {
     title: "Welcome back",
-    username: "Username",
-    usernamePh: "Enter your username",
+    username: "Email",
+    usernamePh: "Enter your email",
     password: "Password",
     passwordPh: "Enter your password",
     signIn: "Sign in",
@@ -117,6 +121,8 @@ const ar: Dict = {
     login: "تسجيل الدخول",
     brand: "Answerly",
     quiz: "اختبار",
+    myQuestions: "أسئلتي",
+    logout: "تسجيل الخروج",
   },
   hero: {
     badge: "اسأل. أجب. نتطور معاً.",

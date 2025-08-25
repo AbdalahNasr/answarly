@@ -18,11 +18,13 @@ import { cn } from "@/lib/utils"
 import { useInputDebug } from "@/hooks/use-debug"
 import OptionField from "@/components/option-field"
 import { createQuestionApi } from "@/lib/api/questions"
+import { useToast } from "@/hooks/use-toast"
 import { X, ChevronRight, Search, Plus, FolderPlus, FolderOpen, Layers } from "lucide-react"
 
 type Props = { onAdded?: () => void }
 
 export default function AddQuestionForm({ onAdded }: Props) {
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [question, setQuestion] = useState("")
   const [type, setType] = useState<QuestionType>("multiple_choice")
@@ -221,6 +223,7 @@ export default function AddQuestionForm({ onAdded }: Props) {
         // Create the question
         await createQuestionApi({
           text: question.trim(),
+          type: type,
           options: type === "multiple_choice" ? mcqValidOptions : undefined,
           correctAnswer: type === "multiple_choice" || type === "true_false" ? answer.trim() : undefined,
           category: categoryId,
@@ -242,9 +245,24 @@ export default function AddQuestionForm({ onAdded }: Props) {
         setCustomRootCategory("")
         setCategoryMode("select")
         
+        toast({ title: 'Success', description: 'Question created successfully!' })
         onAdded?.()
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to create question:', error)
+        // Show user-friendly error message
+        if (error.message.includes('Authentication required')) {
+          toast({ 
+            title: 'Authentication Required', 
+            description: 'Please log in again to create questions. You will be redirected to the login page.',
+            variant: 'destructive' 
+          })
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 2000)
+        } else {
+          toast({ title: 'Error', description: 'Failed to create question. Please try again.', variant: 'destructive' })
+        }
       } finally {
         setLoading(false)
       }
