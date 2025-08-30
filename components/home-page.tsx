@@ -10,6 +10,8 @@ import { Search } from "lucide-react"
 import { useI18n } from "@/components/i18n"
 import { getAllTopics } from "@/lib/topics"
 import TopicCard from "@/components/topic-card"
+import CardSwap from "@/src/reactbitsComponents/CardSwap/CardSwap"
+import RippleGrid from "@/src/backgrounds /RippleGrid/RippleGrid"
 
 export default function HomeClient() {
   const { dict, lang } = useI18n()

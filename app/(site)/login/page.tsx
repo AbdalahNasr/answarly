@@ -2,6 +2,8 @@
 
 import type React from "react"
 
+
+
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import GradientLoader from "@/components/gradient-loader"
 import { ClientOnly } from "@/components/ui/client-only"
 import Link from "next/link"
+import ReactBitsGalaxy from "@/components/ui/react-bits-galaxy"
 
 export default function LoginPage() {
   const { dict, lang } = useI18n()
@@ -81,14 +84,30 @@ export default function LoginPage() {
   }
 
   return (
-    <main>
-      <section className="w-full">
-        <div className="container mx-auto px-4 md:px-6 py-16 md:py-20">
-          <div className="mx-auto max-w-md">
-            <Card className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10 shadow-sm">
+    <main className="h-[calc(100vh-64px)] relative flex items-center justify-center overflow-hidden">
+      {/* Galaxy Background */}
+      <div className="absolute inset-0 z-0">
+        <ReactBitsGalaxy 
+          mouseRepulsion={true}
+          mouseInteraction={true}
+          density={1.2}
+          glowIntensity={0.4}
+          saturation={0.6}
+          hueShift={240}
+          twinkleIntensity={0.5}
+          rotationSpeed={0.05}
+          repulsionStrength={8}
+          transparent={true}
+        />
+      </div>
+      
+      {/* Content */}
+      <section className="relative z-10 w-full flex items-center justify-center h-full px-4">
+        <div className="w-full max-w-md mx-auto">
+          <Card className="relative overflow-hidden rounded-2xl bg-white/10 dark:bg-black/20 border-white/30 dark:border-white/20 shadow-2xl backdrop-blur-md">
               <span className="pointer-events-none absolute -inset-1 opacity-0 sm:opacity-100 bg-gradient-to-br from-fuchsia-500/10 via-indigo-500/10 to-pink-500/10" />
               <CardHeader className="relative">
-                <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{dict.login.title}</CardTitle>
+                <CardTitle className="text-2xl font-bold text-white">{dict.login.title}</CardTitle>
               </CardHeader>
               <CardContent className="relative">
                 <ClientOnly>
@@ -100,7 +119,7 @@ export default function LoginPage() {
                 </ClientOnly>
                 <form onSubmit={signIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-zinc-700 dark:text-zinc-300">
+                    <Label htmlFor="email" className="text-white/90">
                       {dict.login.username}
                     </Label>
                     <div className="relative">
@@ -111,13 +130,13 @@ export default function LoginPage() {
                         placeholder={dict.login.usernamePh}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        className="pl-10 bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white placeholder:text-white/70"
                         required
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-zinc-700 dark:text-zinc-300">
+                    <Label htmlFor="password" className="text-white/90">
                       {dict.login.password}
                     </Label>
                     <div className="relative">
@@ -128,17 +147,17 @@ export default function LoginPage() {
                         placeholder={dict.login.passwordPh}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        className="pl-10 bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white placeholder:text-white/70"
                         required
                       />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-indigo-500/80 to-purple-500/80 hover:from-indigo-600/90 hover:to-purple-600/90 backdrop-blur-md border border-white/30" disabled={loading}>
                     {loading ? (
-                      <GradientLoader className="h-4 w-4" />
+                      <GradientLoader size={16} />
                     ) : (
                       <>
-                        <span>{dict.login.submit}</span>
+                        <span>{dict.login.signIn}</span>
                       </>
                     )}
                   </Button>
@@ -158,10 +177,10 @@ export default function LoginPage() {
                 <div className="mt-6">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-white/60 dark:border-white/10" />
+                      <span className="w-full border-t border-white/60 dark:border-white/20" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white/90 dark:bg-white/5 px-2 text-zinc-500">{dict.login.or}</span>
+                      <span className="bg-white/95 dark:bg-white/10 px-2 text-zinc-500 backdrop-blur-sm">{dict.login.or}</span>
                     </div>
                   </div>
                   <div className="mt-6 grid grid-cols-2 gap-4">
@@ -169,7 +188,7 @@ export default function LoginPage() {
                       variant="outline"
                       onClick={() => oauth("google")}
                       disabled={loading}
-                      className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                      className="bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white hover:bg-white/30"
                     >
                       <Github className="mr-2 h-4 w-4" />
                       Google
@@ -178,7 +197,7 @@ export default function LoginPage() {
                       variant="outline"
                       onClick={() => oauth("github")}
                       disabled={loading}
-                      className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                      className="bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white hover:bg-white/30"
                     >
                       <Github className="mr-2 h-4 w-4" />
                       GitHub
@@ -193,8 +212,7 @@ export default function LoginPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </section>
-    </main>
-  )
-}
+        </section>
+      </main>
+    )
+  }

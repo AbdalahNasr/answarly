@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import GradientLoader from "@/components/gradient-loader"
 import Link from "next/link"
+import ReactBitsGalaxy from "@/components/ui/react-bits-galaxy"
 
 export default function SignupPage() {
   const { dict } = useI18n()
@@ -91,20 +94,36 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center">
-      <section className="w-full flex-1 flex items-center justify-center py-8 sm:py-12">
-        <div className="container mx-auto px-4 sm:px-6 py-0 w-full max-w-md md:max-w-lg">
-          <div className="mx-auto">
-            <Card className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10 shadow-sm">
+    <main className="h-[calc(100vh-64px)] relative flex items-center justify-center overflow-hidden">
+      {/* Galaxy Background */}
+      <div className="absolute inset-0 z-0">
+        <ReactBitsGalaxy 
+          mouseRepulsion={true}
+          mouseInteraction={true}
+          density={1.2}
+          glowIntensity={0.4}
+          saturation={0.6}
+          hueShift={240}
+          twinkleIntensity={0.5}
+          rotationSpeed={0.05}
+          repulsionStrength={8}
+          transparent={true}
+        />
+      </div>
+      
+      {/* Content */}
+      <section className="relative z-10 w-full flex items-center justify-center h-full px-4">
+        <div className="w-full max-w-md mx-auto">
+          <Card className="relative overflow-hidden rounded-2xl bg-white/10 dark:bg-black/20 border-white/30 dark:border-white/20 shadow-2xl backdrop-blur-md">
               <span className="pointer-events-none absolute -inset-1 opacity-0 sm:opacity-100 bg-gradient-to-br from-fuchsia-500/10 via-indigo-500/10 to-pink-500/10" />
 
               <CardHeader className="relative">
-                <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 text-center">Create account</CardTitle>
+                <CardTitle className="text-2xl font-bold text-white text-center">Create account</CardTitle>
               </CardHeader>
               {/* Avatar upload centered at top */}
               <div className="flex justify-center mt-3.5">
                 <label htmlFor="avatar" className="cursor-pointer">
-                  <div className="h-24 w-24 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border-4 border-white/80 dark:border-white/10">
+                  <div className="h-24 w-24 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border-4 border-white/80 dark:border-white/20">
                     <img src={avatarPreview || '/placeholder-user.jpg'} alt="avatar preview" className="h-full w-full object-cover" />
                   </div>
                   <input id="avatar" type="file" accept="image/*" onChange={async (e) => {
@@ -131,20 +150,20 @@ export default function SignupPage() {
                   <input type="email" name="email" autoComplete="email" className="hidden" />
                   <input type="password" name="new-password" autoComplete="new-password" className="hidden" />
                   <div className="space-y-2">
-                    <Label htmlFor="username" className="text-zinc-700 dark:text-zinc-300">Username</Label>
-                    <Input id="username" name="signup-username" autoComplete="name" value={username} onChange={(e) => setUsername(e.target.value)} className="rounded-xl" required />
+                    <Label htmlFor="username" className="text-white/90">Username</Label>
+                    <Input id="username" name="signup-username" autoComplete="name" value={username} onChange={(e) => setUsername(e.target.value)} className="rounded-xl bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white placeholder:text-white/70" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-zinc-700 dark:text-zinc-300">Email</Label>
-                    <Input id="email" name="signup-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl" required />
+                    <Label htmlFor="email" className="text-white/90">Email</Label>
+                    <Input id="email" name="signup-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white placeholder:text-white/70" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-zinc-700 dark:text-zinc-300">Password</Label>
-                    <Input id="password" name="signup-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-xl" required />
+                    <Label htmlFor="password" className="text-white/90">Password</Label>
+                    <Input id="password" name="signup-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-xl bg-white/20 dark:bg-white/10 border-white/40 dark:border-white/20 backdrop-blur-md text-white placeholder:text-white/70" required />
                   </div>
                   {/* Avatar upload is at the top-center; no extra input here */}
 
-                  <Button type="submit" disabled={loading} className="w-full rounded-full text-white bg-gradient-to-r from-fuchsia-600 via-indigo-600 to-pink-600">
+                  <Button type="submit" disabled={loading} className="w-full rounded-full text-white bg-gradient-to-r from-fuchsia-500/80 via-indigo-500/80 to-pink-500/80 hover:from-fuchsia-600/90 hover:via-indigo-600/90 hover:to-pink-600/90 backdrop-blur-md border border-white/30">
                     {loading ? <GradientLoader size={18} /> : "Create account"}
                   </Button>
                 </form>
@@ -163,8 +182,7 @@ export default function SignupPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </section>
-    </main>
-  )
-}
+        </section>
+      </main>
+    )
+  }
