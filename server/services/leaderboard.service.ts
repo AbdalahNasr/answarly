@@ -1,4 +1,4 @@
-import History from '../models/history.model'
+import QuizSession from '../models/quiz-session.model'
 import User from '../models/user.model'
 
 /**
@@ -20,7 +20,7 @@ export async function getLeaderboardByCategory(categoryId: string | null = null,
     { $limit: limit }
   )
 
-  const rows = await History.aggregate(pipeline)
+  const rows = await QuizSession.aggregate(pipeline)
 
   const results: Array<any> = []
   for (const r of rows) {

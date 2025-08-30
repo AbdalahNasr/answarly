@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     const userId = user.id || user.userId || user._id
     
     const body = await request.json()
-    const { text, type, difficulty, options, correctAnswer, category, reason } = body
+    const { text, type, difficulty, options, correctAnswer, keywords, category, reason } = body
     
     // Validate required fields
     if (!text || !type || !difficulty || !category) {
@@ -147,6 +147,15 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    if (type === 'open_ended') {
+      if (!correctAnswer || correctAnswer.trim() === '') {
+        return NextResponse.json(
+          { error: 'Open-ended questions must have a correct answer' },
+          { status: 400 }
+        )
+      }
+    }
+    
     // Check if category exists
     const categoryExists = await Category.findById(category)
     if (!categoryExists) {
@@ -161,7 +170,8 @@ export async function POST(request: NextRequest) {
       type,
       difficulty,
       options: type === 'multiple_choice' ? options : undefined,
-      correctAnswer: type === 'multiple_choice' || type === 'true_false' ? correctAnswer : undefined,
+      correctAnswer: type === 'multiple_choice' || type === 'true_false' || type === 'open_ended' ? correctAnswer : undefined,
+      keywords: type === 'open_ended' && keywords && keywords.length > 0 ? keywords : undefined,
       category,
       reason: type === 'true_false' ? reason : undefined,
       createdBy: userId

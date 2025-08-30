@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
-import { calculateUserProgress } from '@/server/services/progress.service';
+import { getUserQuizHistory } from '@/server/services/quiz-session.service';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -28,19 +28,23 @@ export async function GET(request: NextRequest) {
     
     const userId = user.id || user.userId || user._id;
     
-    // Calculate user progress from quiz sessions
-    const progress = await calculateUserProgress(userId);
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20');
+    
+    const history = await getUserQuizHistory(userId, limit);
 
     return NextResponse.json({
-      progress,
-      success: true
+      history,
+      total: history.length
     });
 
   } catch (error) {
-    console.error('Error fetching user progress:', error);
+    console.error('Error fetching quiz history:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch user progress' },
+      { error: 'Failed to fetch quiz history' },
       { status: 500 }
     );
   }
 }
+

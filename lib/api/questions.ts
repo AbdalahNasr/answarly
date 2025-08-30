@@ -3,6 +3,7 @@ export type CreateQuestionPayload = {
   type: 'multiple_choice' | 'true_false' | 'code_snippet' | 'open_ended'
   options?: string[]
   correctAnswer?: string
+  keywords?: string[]
   category: string
   subCategory?: string
   reason?: string

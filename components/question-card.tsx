@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import type { Question } from "@/lib/questions"
 import {
   BadgeCheck,
@@ -33,7 +33,10 @@ function TypeIcon({ type }: { type: Question["type"] }) {
   }
 }
 
-export default function QuestionCard({ q }: { q: Question }) {
+export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAnswerUpdate?: (answer: string) => void }) {
+  const onAnswerUpdateRef = useRef(onAnswerUpdate)
+  onAnswerUpdateRef.current = onAnswerUpdate
+  
   const [copiedStarter, setCopiedStarter] = useState(false)
   const [copiedUser, setCopiedUser] = useState(false)
   const [copiedOutput, setCopiedOutput] = useState(false)
@@ -64,6 +67,27 @@ export default function QuestionCard({ q }: { q: Question }) {
     }, 250)
     return () => clearTimeout(id)
   }, [q.id, q.type, text, codeInput, output])
+
+  // Notify parent component of answer changes
+  useEffect(() => {
+    if (onAnswerUpdateRef.current) {
+      let currentAnswer = ""
+      if (q.type === "multiple_choice" && choice) {
+        currentAnswer = choice
+      } else if (q.type === "true_false" && tf) {
+        currentAnswer = tf
+      } else if (q.type === "open_ended" && text) {
+        currentAnswer = text
+      } else if (q.type === "code_snippet" && codeInput) {
+        currentAnswer = codeInput
+      }
+      
+      // Only call onAnswerUpdate if we have a meaningful answer
+      if (currentAnswer.trim()) {
+        onAnswerUpdateRef.current(currentAnswer)
+      }
+    }
+  }, [choice, tf, text, codeInput, q.type])
 
   const isCorrect = useMemo(() => {
     if (q.type === "multiple_choice" && choice && q.answer) return choice === q.answer

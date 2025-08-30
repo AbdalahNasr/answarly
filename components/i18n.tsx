@@ -165,26 +165,38 @@ const ar: Dict = {
   footer: { rights: (year) => `© ${year} Answerly. جميع الحقوق محفوظة.` },
 }
 
-type Ctx = { lang: Lang; setLang: (l: Lang) => void; dict: Dict }
+type Ctx = { lang: Lang; setLang: (l: Lang) => void; dict: Dict; mounted: boolean }
 const I18nContext = createContext<Ctx | null>(null)
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en")
+  const [mounted, setMounted] = useState(false)
+  
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? (localStorage.getItem("lang") as Lang | null) : null
-    if (stored) setLangState(stored)
+    setMounted(true)
   }, [])
+  
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (!mounted) return
+    
+    const stored = localStorage.getItem("lang") as Lang | null
+    if (stored) setLangState(stored)
+  }, [mounted])
+  
+  useEffect(() => {
+    if (!mounted) return
+    
     document.documentElement.lang = lang
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr"
     localStorage.setItem("lang", lang)
-  }, [lang])
+  }, [lang, mounted])
+  
   const setLang = (l: Lang) => setLangState(l)
   const dict = lang === "ar" ? ar : en
-  const value = useMemo(() => ({ lang, setLang, dict }), [lang])
+  const value = useMemo(() => ({ lang, setLang, dict, mounted }), [lang, mounted])
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
+
 export function useI18n() {
   const ctx = useContext(I18nContext)
   if (!ctx) throw new Error("useI18n must be used within LanguageProvider")

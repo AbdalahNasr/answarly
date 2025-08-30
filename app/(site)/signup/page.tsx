@@ -9,6 +9,7 @@ import { useI18n } from "@/components/i18n"
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import GradientLoader from "@/components/gradient-loader"
+import Link from "next/link"
 
 export default function SignupPage() {
   const { dict } = useI18n()
@@ -149,6 +150,16 @@ export default function SignupPage() {
                 </form>
 
                 {message && <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">{message}</p>}
+                
+                {/* Login link */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium transition-colors">
+                      Sign in
+                    </Link>
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>

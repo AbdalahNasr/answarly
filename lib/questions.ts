@@ -1,5 +1,5 @@
 // lib/questions.ts
-export type Difficulty = 'easy' | 'medium' | 'hard'
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'beginner' | 'intermediate' | 'advanced'
 export type QuestionType = 'multiple_choice' | 'code_snippet' | 'true_false' | 'open_ended'
 
 export type Question = {

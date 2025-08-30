@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { ClientOnly } from '@/components/ui/client-only'
+
 const PencilIcon = ({ className = '' }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21v-3.6L14.6 6.8l3.6 3.6L7 21H3zM20.7 7.3l-3.6-3.6 1.9-1.9a1 1 0 011.4 0l1.2 1.2a1 1 0 010 1.4l-1.9 1.9z" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
 )
@@ -142,164 +144,235 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         <div className="rounded-2xl bg-white/90 dark:bg-[#0b1220]/80 border border-white/60 dark:border-white/6 shadow-lg p-6 backdrop-blur-sm">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-4">
-              <label className="relative rounded-full p-1 bg-gradient-to-br from-fuchsia-500 to-indigo-500 cursor-pointer" htmlFor="avatar-input">
-                <div className="rounded-full bg-white dark:bg-slate-800 p-0.5">
-                    <div className="rounded-full shadow-md overflow-hidden w-[88px] h-[88px] flex items-center justify-center">
-                    <Avatar asButton={false} src={avatarPreview ?? getDisplayAvatar()} name={user?.username} size={88} />
+              <ClientOnly>
+                <label className="relative rounded-full p-1 bg-gradient-to-br from-fuchsia-500 to-indigo-500 cursor-pointer" htmlFor="avatar-input">
+                  <div className="rounded-full bg-white dark:bg-slate-800 p-0.5">
+                      <div className="rounded-full shadow-md overflow-hidden w-[88px] h-[88px] flex items-center justify-center">
+                      <Avatar asButton={false} src={avatarPreview ?? getDisplayAvatar()} name={user?.username} size={88} />
+                    </div>
                   </div>
-                </div>
-                <div className="absolute -right-1 -bottom-1 bg-white dark:bg-slate-900 rounded-full p-1 shadow-md">
-                  <CameraIcon className="h-4 w-4 text-zinc-700" />
-                </div>
-                <input id="avatar-input" type="file" accept="image/*" className="sr-only" aria-label="Upload profile picture" onChange={async (e) => {
-                  const f = e.target.files?.[0]
-                  if (!f) return
-                  
-                  // optimistic preview
-                  const url = URL.createObjectURL(f)
-                  setAvatarPreview(url)
-                  const reader = new FileReader()
-                  reader.onload = async () => {
-                    const base64 = String(reader.result || '')
+                  <div className="absolute -right-1 -bottom-1 bg-white dark:bg-slate-900 rounded-full p-1 shadow-md">
+                    <CameraIcon className="h-4 w-4 text-zinc-700" />
+                  </div>
+                  <input id="avatar-input" type="file" accept="image/*" className="sr-only" aria-label="Upload profile picture" onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    
+                    // optimistic preview
+                    const url = URL.createObjectURL(f)
+                    setAvatarPreview(url)
+                    
+                    const formData = new FormData()
+                    formData.append('avatar', f)
                     
                     try {
-                      const res = await fetch(`/api/users/${id}`, { 
-                        method: 'PATCH', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ avatarBase64: base64, avatarFilename: f.name }) 
+                      const token = localStorage.getItem('answerly-token')
+                      const res = await fetch(`/api/users/${id}/avatar`, { 
+                        method: 'POST', 
+                        headers: {
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: formData 
                       })
                       const data = await res.json()
-                      
                       if (!res.ok) throw new Error(data?.error || data?.message || 'Upload failed')
                       setUser(data.user)
                       try { localStorage.setItem('answerly-user', JSON.stringify(data.user)); window.dispatchEvent(new Event('user-updated')) } catch (e) {}
                       setAvatarPreview(null)
-                      // Force a small delay to ensure the avatar updates properly
-                      setTimeout(() => {
-                        window.dispatchEvent(new Event('user-updated'))
-                      }, 100)
-                      toast({ title: 'Avatar updated' })
+                      toast({ title: 'Avatar updated', description: 'Profile picture updated successfully' })
                     } catch (err: any) {
                       setAvatarPreview(null)
-                      toast({ title: 'Upload failed', description: err.message || 'Try again', variant: 'destructive' })
-                    } finally {
-                      // revoke object URL after some time
-                      setTimeout(() => URL.revokeObjectURL(url), 30000)
+                      toast({ title: 'Upload failed', description: err.message || 'Please try again', variant: 'destructive' })
                     }
-                  }
-                  reader.readAsDataURL(f)
-                }} />
-              </label>
-
-              <div className="text-sm">
-                {/* stack name and email vertically */}
-                <div className="flex flex-col items-start">
+                  }} />
+                </label>
+              </ClientOnly>
+              <div className="flex-1">
+                <ClientOnly>
                   {editing ? (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="!h-9 !p-2 rounded-md border-slate-200" />
-                        <button onClick={saveName} aria-label="save" className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-md p-1"><CheckIcon className="h-4 w-4" /></button>
-                        <button onClick={() => { setEditing(false); setEditingName(user?.username || '') }} aria-label="cancel" className="inline-flex items-center justify-center bg-zinc-100 dark:bg-zinc-700 rounded-md p-1 ml-1"><XIcon className="h-4 w-4 text-zinc-700 dark:text-zinc-200" /></button>
-                      </div>
-                      {/* show email while editing as well, below the input row */}
-                      {user?.email && (
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 underline decoration-indigo-400 decoration-2 underline-offset-2">
-                          <a href={`mailto:${user.email}`}>{user.email}</a>
-                        </p>
-                      )}
-                    </>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="flex-1 bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        placeholder="Enter username"
+                      />
+                      <Button size="sm" onClick={saveName} className="bg-green-600 hover:bg-green-700">
+                        <CheckIcon className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                        <XIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ) : (
-                    <>
-                      <div className="flex flex-col">
-                        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{user?.username ?? 'User'}</h1>
-                        {user?.email && (
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 underline decoration-indigo-400 decoration-2 underline-offset-2">
-                            <a href={`mailto:${user.email}`}>{user.email}</a>
-                          </p>
-                        )}
-                      </div>
-                      <button onClick={() => setEditing(true)} aria-label="edit name" className="mt-2 inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"><PencilIcon className="h-4 w-4" /> <span className="text-xs">Edit name</span></button>
-                    </>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{user?.username || 'Loading...'}</h1>
+                      <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
-                </div>
+                </ClientOnly>
+                <p className="text-zinc-600 dark:text-zinc-400 mt-1">{user?.email || 'Loading...'}</p>
               </div>
             </div>
-            
-          </div>
-          {/* action buttons moved below */}
-          <div className="mt-4 flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/my-questions')}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-0"
-            >
-              My Questions
-            </Button>
-            <Dialog open={passwordOpen} onOpenChange={(open) => setPasswordOpen(open)}>
-              <DialogTrigger asChild>
-                <Button variant="outline">Change password</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Change password</DialogTitle>
-                  <DialogDescription>Enter your current password and pick a new one.</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-3 py-2">
-                  <div className="relative">
-                    <Input type={showOldPassword ? 'text' : 'password'} placeholder="Current password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
-                    <button type="button" onClick={() => setShowOldPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-500">{showOldPassword ? 'Hide' : 'Show'}</button>
+            <div className="ml-auto flex items-center gap-2">
+              <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10">
+                    Change Password
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
+                  <DialogHeader>
+                    <DialogTitle>Change Password</DialogTitle>
+                    <DialogDescription>Enter your current password and choose a new one.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Current Password</label>
+                      <div className="relative">
+                        <Input
+                          type={showOldPassword ? "text" : "password"}
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                          className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowOldPassword(!showOldPassword)}
+                        >
+                          {showOldPassword ? "Hide" : "Show"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">New Password</label>
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? "Hide" : "Show"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Confirm New Password</label>
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? "Hide" : "Show"}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Input type={showNewPassword ? 'text' : 'password'} placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                    <button type="button" onClick={() => setShowNewPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-500">{showNewPassword ? 'Hide' : 'Show'}</button>
-                  </div>
-                  <div className="relative">
-                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                    <button type="button" onClick={() => setShowConfirmPassword(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-500">{showConfirmPassword ? 'Hide' : 'Show'}</button>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <div className="flex gap-2 w-full justify-end">
-                    <Button variant="secondary" onClick={() => setPasswordOpen(false)}>Cancel</Button>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setPasswordOpen(false)}>
+                      Cancel
+                    </Button>
                     <Button onClick={async () => {
-                      if (!oldPassword || !newPassword) return toast({ title: 'Missing fields', description: 'Please fill both fields', variant: 'destructive' })
-                      if (newPassword !== confirmPassword) return toast({ title: 'Mismatch', description: 'The new passwords do not match', variant: 'destructive' })
+                      if (newPassword !== confirmPassword) {
+                        toast({ title: 'Error', description: 'New passwords do not match', variant: 'destructive' })
+                        return
+                      }
                       try {
-                        const res = await fetch('/api/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: id, oldPassword, newPassword }) })
-                        const d = await res.json()
-                        if (!res.ok) throw new Error(d?.error || d?.message || 'Change failed')
-                        toast({ title: 'Password changed' })
+                        const res = await fetch('/api/auth/change-password', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ oldPassword, newPassword })
+                        })
+                        const data = await res.json()
+                        if (!res.ok) throw new Error(data?.error || data?.message || 'Password change failed')
+                        toast({ title: 'Password changed', description: 'Your password has been updated successfully' })
                         setPasswordOpen(false)
                         setOldPassword('')
                         setNewPassword('')
                         setConfirmPassword('')
                       } catch (err: any) {
-                        toast({ title: 'Change failed', description: err.message || 'Try again', variant: 'destructive' })
+                        toast({ title: 'Password change failed', description: err.message || 'Please try again', variant: 'destructive' })
                       }
-                    }}>Save</Button>
+                    }}>
+                      Change Password
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30">
+                    <TrashIcon className="h-4 w-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
+                  <DialogHeader>
+                    <DialogTitle>Delete Account</DialogTitle>
+                    <DialogDescription>
+                      This action cannot be undone. This will permanently delete your account and remove all your data.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline">Cancel</Button>
+                    <Button variant="destructive" onClick={deleteAccount}>
+                      Delete Account
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+          
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Quiz History</h2>
+            <div className="space-y-3">
+              {history.length === 0 ? (
+                <p className="text-zinc-600 dark:text-zinc-400">No quiz history yet.</p>
+              ) : (
+                history.map((quiz, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-white/50 dark:bg-white/5 rounded-lg border border-white/60 dark:border-white/10">
+                    <div>
+                      <h3 className="font-medium text-zinc-900 dark:text-zinc-100">{quiz.title || 'Quiz'}</h3>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        Score: {quiz.score}/{quiz.total} ({Math.round((quiz.score / quiz.total) * 100)}%)
+                      </p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                        {new Date(quiz.completedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => router.push(`/quiz/take?quizId=${quiz.quizId}`)}>
+                      Retake
+                    </Button>
                   </div>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <button onClick={deleteAccount} className="ml-2 inline-flex items-center bg-gradient-to-r from-red-500 to-fuchsia-600 text-white px-4 py-2 rounded-md shadow hover:opacity-95"><TrashIcon className="h-4 w-4 mr-2" /> <span className="text-sm font-medium">Delete account</span></button>
+                ))
+              )}
+            </div>
           </div>
         </div>
-
-        <section className="mt-6">
-          <h2 className="text-lg font-semibold">Progress & History</h2>
-          <div className="mt-4 space-y-3">
-            {history.length === 0 && <p className="text-zinc-500">No history yet.</p>}
-            {history.map((h) => (
-              <div key={h._id} className="p-3 border rounded">
-                <div className="flex justify-between">
-                  <div>Score: {h.score}</div>
-                  <div className="text-zinc-500">{new Date(h.completedAt).toLocaleString()}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
-  </main>
+    </main>
   )
 }

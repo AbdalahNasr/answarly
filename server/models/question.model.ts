@@ -6,6 +6,7 @@ export interface IQuestion extends Document {
   text: string;
   options?: string[]; // Multiple choice answers
   correctAnswer?: string; // Can be an option or a key
+  keywords?: string[]; // Keywords for open-ended question evaluation
   category: ICategory["_id"]; // Reference to any level category
   reason?: string;
   difficulty?: "easy" | "medium" | "hard";
@@ -20,6 +21,7 @@ const QuestionSchema = new Schema<IQuestion>(
     text: { type: String, required: true, trim: true },
     options: { type: [String] }, // Made optional for different question types
     correctAnswer: { type: String }, // Made optional for different question types
+    keywords: { type: [String] }, // Keywords for open-ended question evaluation
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
     reason: { type: String, trim: true },
     difficulty: {

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import Reveal from "@/components/reveal"
 import { fetchCategories, fetchCategoriesByParent, createCategory, type Category } from "@/lib/categories"
-import { Search, Plus, X, ChevronRight } from "lucide-react"
+import { Search, Plus, X, ChevronRight, ArrowLeft, FolderOpen, Folder } from "lucide-react"
 
 export default function QuizSetupPage() {
   const router = useRouter()
@@ -18,16 +18,15 @@ export default function QuizSetupPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Category selection states
+  // Hierarchical category selection states
   const [rootCategories, setRootCategories] = useState<Category[]>([])
-  const [selectedCategories, setSelectedCategories] = useState<Category[]>([]) // Full path of selected categories
-  const [availableSubcategories, setAvailableSubcategories] = useState<Category[]>([])
+  const [selectedPath, setSelectedPath] = useState<Category[]>([])
+  const [currentLevelCategories, setCurrentLevelCategories] = useState<Category[]>([])
   const [categoryMode, setCategoryMode] = useState<"select" | "custom">("select")
   const [customCategory, setCustomCategory] = useState<string>("")
 
   // Search functionality
   const [searchTerm, setSearchTerm] = useState("")
-  const [showSearch, setShowSearch] = useState(false)
 
   // Quiz configuration
   const [questionType, setQuestionType] = useState<string>("multiple_choice")
@@ -48,14 +47,14 @@ export default function QuizSetupPage() {
     loadRootCategories()
   }, [])
 
-  // Load subcategories when selection changes
+  // Load subcategories when path changes
   useEffect(() => {
-    if (selectedCategories.length > 0) {
+    if (selectedPath.length > 0) {
       loadSubcategories()
     } else {
-      setAvailableSubcategories([])
+      setCurrentLevelCategories([])
     }
-  }, [selectedCategories])
+  }, [selectedPath])
 
   const loadRootCategories = async () => {
     try {
@@ -72,50 +71,37 @@ export default function QuizSetupPage() {
 
   const loadSubcategories = async () => {
     try {
-      const lastSelected = selectedCategories[selectedCategories.length - 1]
+      const lastSelected = selectedPath[selectedPath.length - 1]
       if (lastSelected && lastSelected._id) {
         const subcategories = await fetchCategoriesByParent(lastSelected._id)
-        setAvailableSubcategories(subcategories)
+        setCurrentLevelCategories(subcategories)
       }
     } catch (err) {
       console.error('Failed to load subcategories:', err)
-      setAvailableSubcategories([])
+      setCurrentLevelCategories([])
     }
   }
 
   const handleCategorySelect = (category: Category) => {
-    // Find if this category is already in the path
-    const existingIndex = selectedCategories.findIndex(cat => cat._id === category._id)
-    
-    if (existingIndex >= 0) {
-      // If category is already selected, truncate the path to this level
-      setSelectedCategories(selectedCategories.slice(0, existingIndex + 1))
-    } else {
-      // Add new category to the path
-      setSelectedCategories([...selectedCategories, category])
-    }
+    setSelectedPath([...selectedPath, category])
   }
 
-  const handleSubcategorySelect = (subcategory: Category) => {
-    // Find if this subcategory is already in the path
-    const existingIndex = selectedCategories.findIndex(cat => cat._id === subcategory._id)
-    
-    if (existingIndex >= 0) {
-      // If subcategory is already selected, truncate the path to this level
-      setSelectedCategories(selectedCategories.slice(0, existingIndex + 1))
-    } else {
-      // Add new subcategory to the path
-      setSelectedCategories([...selectedCategories, subcategory])
-    }
+  const handleGeneralSelect = () => {
+    // User chose "General" - keep current path as is
+    // This means they want questions from the current level category
   }
 
-  const removeCategoryFromPath = (index: number) => {
-    setSelectedCategories(selectedCategories.slice(0, index))
+  const goBackOneLevel = () => {
+    setSelectedPath(selectedPath.slice(0, -1))
   }
 
-  const clearCategoryPath = () => {
-    setSelectedCategories([])
-    setAvailableSubcategories([])
+  const goToRoot = () => {
+    setSelectedPath([])
+  }
+
+  const clearSelection = () => {
+    setSelectedPath([])
+    setCurrentLevelCategories([])
   }
 
   // Filter categories based on search
@@ -123,7 +109,7 @@ export default function QuizSetupPage() {
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const filteredSubcategories = availableSubcategories.filter(cat => 
+  const filteredCurrentCategories = currentLevelCategories.filter(cat => 
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -133,8 +119,8 @@ export default function QuizSetupPage() {
     // Get the final selected category (deepest level)
     const finalCategory = categoryMode === "custom" 
       ? customCategory 
-      : selectedCategories.length > 0 
-        ? selectedCategories[selectedCategories.length - 1]._id!
+      : selectedPath.length > 0 
+        ? selectedPath[selectedPath.length - 1]._id!
         : ""
 
     if (!finalCategory.trim()) {
@@ -155,9 +141,19 @@ export default function QuizSetupPage() {
   const addCustomCategory = () => {
     if (customCategory.trim()) {
       setCategoryMode("custom")
-      setSelectedCategories([])
+      setSelectedPath([])
     }
   }
+
+  // Get current level display name
+  const getCurrentLevelName = () => {
+    if (selectedPath.length === 0) return "Main Categories"
+    const current = selectedPath[selectedPath.length - 1]
+    return current.name
+  }
+
+  // Check if current level has subcategories
+  const hasSubcategories = currentLevelCategories.length > 0
 
   if (loading) {
     return (
@@ -235,22 +231,21 @@ export default function QuizSetupPage() {
                   </div>
 
                   {/* Selected Category Path */}
-                  {categoryMode === "select" && selectedCategories.length > 0 && (
+                  {categoryMode === "select" && selectedPath.length > 0 && (
                     <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-lg">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm text-zinc-600 dark:text-zinc-400">Path:</span>
-                        {selectedCategories.map((cat, index) => (
+                        {selectedPath.map((cat, index) => (
                           <div key={cat._id} className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeCategoryFromPath(index)}
+                              onClick={() => setSelectedPath(selectedPath.slice(0, index + 1))}
                               className="h-6 px-2 text-xs"
                             >
                               {cat.name}
-                              <X className="ml-1 h-3 w-3" />
                             </Button>
-                            {index < selectedCategories.length - 1 && (
+                            {index < selectedPath.length - 1 && (
                               <ChevronRight className="h-3 w-3 text-zinc-400" />
                             )}
                           </div>
@@ -258,7 +253,7 @@ export default function QuizSetupPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={clearCategoryPath}
+                          onClick={clearSelection}
                           className="h-6 px-2 text-xs text-red-500"
                         >
                           Clear
@@ -270,6 +265,30 @@ export default function QuizSetupPage() {
                   {/* Select Existing Categories */}
                   {categoryMode === "select" && (
                     <div className="space-y-3">
+                      {/* Navigation */}
+                      {selectedPath.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={goBackOneLevel}
+                            className="h-8 px-2 text-xs"
+                          >
+                            <ArrowLeft className="h-3 w-3 mr-1" />
+                            Back
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={goToRoot}
+                            className="h-8 px-2 text-xs"
+                          >
+                            <Folder className="h-3 w-3 mr-1" />
+                            Root
+                          </Button>
+                        </div>
+                      )}
+
                       {/* Search Bar */}
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -292,147 +311,165 @@ export default function QuizSetupPage() {
                         )}
                       </div>
 
-                      {/* Root Categories */}
-                      {selectedCategories.length === 0 && (
-                        <div className="max-h-48 overflow-y-auto border rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                          <div className="p-2 text-xs text-zinc-500 border-b">Root Categories</div>
-                          {filteredRootCategories.length === 0 ? (
-                            <div className="p-4 text-center text-zinc-500">
-                              {searchTerm ? "No categories found" : "No categories available"}
-                            </div>
-                          ) : (
-                            filteredRootCategories.map((c) => (
-                              <button
-                                key={c._id}
-                                type="button"
-                                onClick={() => handleCategorySelect(c)}
-                                className="w-full p-3 text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
-                              >
-                                <div className="font-medium text-zinc-900 dark:text-zinc-100">{c.name}</div>
-                                {c.description && (
-                                  <div className="text-xs text-zinc-500">{c.description}</div>
-                                )}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
+                      {/* Current Level Header */}
+                      <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        {getCurrentLevelName()}
+                      </div>
 
-                      {/* Subcategories */}
-                      {selectedCategories.length > 0 && availableSubcategories.length > 0 && (
-                        <div className="max-h-48 overflow-y-auto border rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                          <div className="p-2 text-xs text-zinc-500 border-b">
-                            Subcategories of "{selectedCategories[selectedCategories.length - 1].name}"
-                          </div>
-                          {filteredSubcategories.length === 0 ? (
-                            <div className="p-4 text-center text-zinc-500">
-                              {searchTerm ? "No subcategories found" : "No subcategories available"}
-                            </div>
-                          ) : (
-                            filteredSubcategories.map((c) => (
-                              <button
-                                key={c._id}
-                                type="button"
-                                onClick={() => handleSubcategorySelect(c)}
-                                className="w-full p-3 text-left hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
-                              >
-                                <div className="font-medium text-zinc-900 dark:text-zinc-100">{c.name}</div>
-                                {c.description && (
-                                  <div className="text-xs text-zinc-500">{c.description}</div>
-                                )}
-                                <div className="text-xs text-zinc-400">Level {c.level}</div>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
+                      {/* Categories List */}
+                      <div className="max-h-48 overflow-y-auto border rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
+                        {selectedPath.length === 0 ? (
+                          // Root categories
+                          <>
+                            <div className="p-2 text-xs text-zinc-500 border-b">Main Categories</div>
+                            {filteredRootCategories.length === 0 ? (
+                              <div className="p-4 text-center text-zinc-500">
+                                No categories found
+                              </div>
+                            ) : (
+                              filteredRootCategories.map((cat) => (
+                                <Button
+                                  key={cat._id}
+                                  variant="ghost"
+                                  className="w-full justify-start h-auto p-3 rounded-none border-b last:border-b-0 hover:bg-zinc-50 dark:hover:bg-white/5"
+                                  onClick={() => handleCategorySelect(cat)}
+                                >
+                                  <FolderOpen className="h-4 w-4 mr-2 text-zinc-400" />
+                                  <div className="text-left">
+                                    <div className="font-medium">{cat.name}</div>
+                                    {cat.description && (
+                                      <div className="text-xs text-zinc-500">{cat.description}</div>
+                                    )}
+                                  </div>
+                                </Button>
+                              ))
+                            )}
+                          </>
+                        ) : (
+                          // Subcategories or General option
+                          <>
+                            <div className="p-2 text-xs text-zinc-500 border-b">Choose an option</div>
+                            
+                            {/* General Option */}
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start h-auto p-3 rounded-none border-b hover:bg-zinc-50 dark:hover:bg-white/5"
+                              onClick={handleGeneralSelect}
+                            >
+                              <Folder className="h-4 w-4 mr-2 text-zinc-400" />
+                              <div className="text-left">
+                                <div className="font-medium">General</div>
+                                <div className="text-xs text-zinc-500">All questions from this category</div>
+                              </div>
+                            </Button>
 
-                      {/* No more subcategories message */}
-                      {selectedCategories.length > 0 && availableSubcategories.length === 0 && (
-                        <div className="p-4 text-center text-zinc-500 bg-zinc-50 dark:bg-white/5 rounded-lg">
-                          <p>No more subcategories available.</p>
-                          <p className="text-sm">You can start a quiz with the current selection or go back to choose a different path.</p>
-                        </div>
-                      )}
+                            {/* Specific Subcategories */}
+                            {filteredCurrentCategories.length > 0 && (
+                              <>
+                                <div className="p-2 text-xs text-zinc-500 border-b bg-zinc-50 dark:bg-white/5">
+                                  Specific Subcategories
+                                </div>
+                                {filteredCurrentCategories.map((cat) => (
+                                  <Button
+                                    key={cat._id}
+                                    variant="ghost"
+                                    className="w-full justify-start h-auto p-3 rounded-none border-b last:border-b-0 hover:bg-zinc-50 dark:hover:bg-white/5"
+                                    onClick={() => handleCategorySelect(cat)}
+                                  >
+                                    <FolderOpen className="h-4 w-4 mr-2 text-zinc-400" />
+                                    <div className="text-left">
+                                      <div className="font-medium">{cat.name}</div>
+                                      {cat.description && (
+                                        <div className="text-xs text-zinc-500">{cat.description}</div>
+                                      )}
+                                    </div>
+                                  </Button>
+                                ))}
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {/* Write Custom Category */}
+                  {/* Custom Category Input */}
                   {categoryMode === "custom" && (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Textarea
-                        placeholder="Enter your custom category name..."
+                        placeholder="Enter your custom category (e.g., 'JavaScript Arrays', 'React Hooks', 'CSS Grid')"
                         value={customCategory}
                         onChange={(e) => setCustomCategory(e.target.value)}
                         className="min-h-[80px] rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
                       />
-                      <p className="text-xs text-zinc-500">
-                        This category will be created if it doesn't exist in the database.
-                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addCustomCategory}
+                        className="rounded-full"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Use Custom Category
+                      </Button>
                     </div>
                   )}
                 </div>
 
-                {/* Question Type */}
+                {/* Quiz Configuration */}
+                <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label className="text-sm">{"Question Type"}</Label>
-                  <Select value={questionType} onValueChange={setQuestionType}>
+                    <Label className="text-sm">{"Question Type"}</Label>
+                    <Select value={questionType} onValueChange={setQuestionType}>
                     <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                      <SelectValue placeholder="Select question type" />
+                        <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {questionTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
+                        {questionTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Difficulty */}
                 <div className="grid gap-2">
-                  <Label className="text-sm">{"Difficulty"}</Label>
-                  <Select value={level} onValueChange={setLevel}>
+                    <Label className="text-sm">{"Difficulty Level"}</Label>
+                    <Select value={level} onValueChange={setLevel}>
                     <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                      <SelectValue placeholder="Select difficulty" />
+                        <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {levels.map((l) => (
                         <SelectItem key={l} value={l}>
-                          {l.charAt(0).toUpperCase() + l.slice(1)}
+                            {l.charAt(0).toUpperCase() + l.slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Number of Questions */}
                 <div className="grid gap-2">
-                  <Label className="text-sm">
-                    {"Number of questions"}
-                    <span className="ml-2 text-xs text-zinc-500">{"(1-50)"}</span>
-                  </Label>
+                    <Label className="text-sm">{"Number of Questions"}</Label>
                   <Input
                     type="number"
-                    min={1}
-                    max={50}
+                      min="1"
+                      max="50"
                     value={count}
-                    onChange={(e) => setCount(Number(e.target.value))}
+                      onChange={(e) => setCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 5)))}
                     className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
                   />
+                  </div>
                 </div>
 
                 {/* Start Button */}
-                <div className="pt-2">
                   <Button
                     onClick={start}
-                    disabled={!((categoryMode === "select" && selectedCategories.length > 0) || (categoryMode === "custom" && customCategory.trim()))}
-                    className="rounded-full text-white bg-gradient-to-r from-fuchsia-600 via-indigo-600 to-pink-600 hover:from-fuchsia-500 hover:via-indigo-500 hover:to-pink-500"
+                  className="w-full rounded-full text-white bg-gradient-to-r from-fuchsia-600 via-indigo-600 to-pink-600 hover:from-fuchsia-500 hover:via-indigo-500 hover:to-pink-500"
                   >
-                    {"Start Quiz"}
+                  Start Quiz
                   </Button>
-                </div>
               </CardContent>
             </Card>
           </div>

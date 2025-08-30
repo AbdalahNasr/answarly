@@ -20,6 +20,7 @@ import { LogOut, User, FileText, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
+import { ClientOnly } from "@/components/ui/client-only"
 
 export default function Navbar() {
   const { dict, lang } = useI18n()
@@ -28,8 +29,15 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [avatarLoaded, setAvatarLoaded] = useState(false)
+  const [mounted, setMounted] = useState(false)
   
   useEffect(() => {
+    setMounted(true)
+  }, [])
+  
+  useEffect(() => {
+    if (!mounted) return
+    
     const loadUserData = () => {
       try {
         const raw = localStorage.getItem('answerly-user')
@@ -62,7 +70,7 @@ export default function Navbar() {
     const interval = setInterval(loadUserData, 5000) // Changed from 1000ms to 5000ms
     
     return () => clearInterval(interval)
-  }, [])
+  }, [mounted])
 
   const handleLogout = () => {
     localStorage.removeItem('answerly-user')
@@ -120,8 +128,8 @@ export default function Navbar() {
     return `${url}${separator}t=${timestamp}`
   }
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('answerly-token') : null
-  const isLoggedIn = (user?.id || user?._id) && token
+  const token = mounted ? localStorage.getItem('answerly-token') : null
+  const isLoggedIn = mounted && (user?.id || user?._id) && token
 
   const mainLinks = [
     { href: "/", label: dict.nav.home },
@@ -167,16 +175,18 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
-          {userLinks.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              prefetch={true}
-              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-medium"
-            >
-              {l.label}
-            </Link>
-          ))}
+          <ClientOnly>
+            {userLinks.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                prefetch={true}
+                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-medium"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </ClientOnly>
         </nav>
 
         {/* Right side - Search, Language, Theme, Auth */}
@@ -186,69 +196,73 @@ export default function Navbar() {
           <ThemeToggle />
           
           {/* Auth Link - Only show login link when not logged in */}
-          {!isLoggedIn && (
-            <Link
-              href="/login"
-              prefetch={true}
-              className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
-            >
-              {dict.nav.login}
-            </Link>
-          )}
+          <ClientOnly>
+            {!isLoggedIn && (
+              <Link
+                href="/login"
+                prefetch={true}
+                className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                {dict.nav.login}
+              </Link>
+            )}
+          </ClientOnly>
           
           {/* Profile Avatar - Only show when logged in */}
-          {isLoggedIn && user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage 
-                      src={getDisplayAvatar() || ''} 
-                      alt={user.username || 'User'}
-                      onLoad={() => setAvatarLoaded(true)}
-                      onError={() => setAvatarLoaded(false)}
-                    />
-                    <AvatarFallback>
-                      {user.username ? 
-                        user.username.split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() 
-                        : 'U'
-                      }
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.username}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href={`/profile/${user.id || user._id}`} prefetch={true}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/my-questions" prefetch={true}>
+          <ClientOnly>
+            {isLoggedIn && user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage 
+                        src={getDisplayAvatar() || ''} 
+                        alt={user.username || 'User'}
+                        onLoad={() => setAvatarLoaded(true)}
+                        onError={() => setAvatarLoaded(false)}
+                      />
+                      <AvatarFallback>
+                        {user.username ? 
+                          user.username.split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase() 
+                          : 'U'
+                        }
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.username}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={`/profile/${user.id || user._id}`} prefetch={true}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-questions" prefetch={true}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>{dict.nav.myQuestions}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={refreshUserData}>
                     <FileText className="mr-2 h-4 w-4" />
-                    <span>{dict.nav.myQuestions}</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={refreshUserData}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>Refresh Data</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>{dict.nav.logout}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                    <span>Refresh Data</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>{dict.nav.logout}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </ClientOnly>
         </div>
 
         {/* Mobile menu */}
@@ -273,21 +287,25 @@ export default function Navbar() {
                   <Link href={l.href}>{l.label}</Link>
                 </DropdownMenuItem>
               ))}
-              {userLinks.map((l) => (
-                <DropdownMenuItem key={l.href} asChild>
-                  <Link href={l.href} className="text-indigo-600 dark:text-indigo-400">{l.label}</Link>
-                </DropdownMenuItem>
-              ))}
-              {authLink.isButton ? (
-                <DropdownMenuItem onClick={authLink.onClick} className="text-red-600 dark:text-red-400">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {authLink.label}
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem asChild>
-                  <Link href={authLink.href}>{authLink.label}</Link>
-                </DropdownMenuItem>
-              )}
+              <ClientOnly>
+                {userLinks.map((l) => (
+                  <DropdownMenuItem key={l.href} asChild>
+                    <Link href={l.href} className="text-indigo-600 dark:text-indigo-400">{l.label}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </ClientOnly>
+              <ClientOnly>
+                {authLink.isButton ? (
+                  <DropdownMenuItem onClick={authLink.onClick} className="text-red-600 dark:text-red-400">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    {authLink.label}
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link href={authLink.href}>{authLink.label}</Link>
+                  </DropdownMenuItem>
+                )}
+              </ClientOnly>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

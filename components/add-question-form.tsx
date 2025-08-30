@@ -29,10 +29,12 @@ export default function AddQuestionForm({ onAdded }: Props) {
   const [question, setQuestion] = useState("")
   const [type, setType] = useState<QuestionType>("multiple_choice")
   const [difficulty, setDifficulty] = useState<Difficulty | undefined>("easy")
+  const [difficultyType, setDifficultyType] = useState<"academic" | "professional">("academic")
   const [options, setOptions] = useState<string[]>(["", "", "", ""])
   const [answer, setAnswer] = useState("")
   const [code, setCode] = useState("")
   const [reason, setReason] = useState("")
+  const [keywords, setKeywords] = useState("")
 
   // Category state
   const [rootCategories, setRootCategories] = useState<Category[]>([])
@@ -225,7 +227,8 @@ export default function AddQuestionForm({ onAdded }: Props) {
           text: question.trim(),
           type: type,
           options: type === "multiple_choice" ? mcqValidOptions : undefined,
-          correctAnswer: type === "multiple_choice" || type === "true_false" ? answer.trim() : undefined,
+          correctAnswer: type === "multiple_choice" || type === "true_false" || type === "open_ended" ? answer.trim() : undefined,
+          keywords: type === "open_ended" && keywords.trim() ? keywords.split(',').map(k => k.trim()).filter(k => k) : undefined,
           category: categoryId,
           reason: type === "true_false" ? reason.trim() : undefined,
           difficulty: (difficulty as any) || undefined,
@@ -235,10 +238,12 @@ export default function AddQuestionForm({ onAdded }: Props) {
         setQuestion("")
         setType("multiple_choice")
         setDifficulty("easy")
+        setDifficultyType("academic")
         setOptions(["", "", "", ""])
         setAnswer("")
         setCode("")
         setReason("")
+        setKeywords("")
         setSelectedRootCategory(null)
         setSelectedSubcategory(null)
         setSelectedThirdLayer(null)
@@ -294,15 +299,38 @@ export default function AddQuestionForm({ onAdded }: Props) {
             </div>
 
             <div>
-              <Label className="text-sm">Difficulty</Label>
+              <Label className="text-sm">Difficulty Type</Label>
+              <Select value={difficultyType} onValueChange={(value: "academic" | "professional") => setDifficultyType(value)}>
+                <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="academic">Academic</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-sm">Difficulty Level</Label>
               <Select value={difficulty} onValueChange={(value: Difficulty) => setDifficulty(value)}>
                 <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
+                  {difficultyType === "academic" ? (
+                    <>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -644,6 +672,32 @@ export default function AddQuestionForm({ onAdded }: Props) {
                 placeholder="Write the code snippet..."
                 className="min-h-[120px] font-mono text-sm rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
               />
+            </div>
+          )}
+
+          {type === "open_ended" && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm">Correct Answer</Label>
+                <Textarea
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="Write the expected correct answer..."
+                  className="min-h-[100px] rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Keywords (Optional)</Label>
+                <Input
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                  placeholder="Enter keywords separated by commas (e.g., object, programming, design)"
+                  className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  Keywords help evaluate partial answers. Students' answers will be checked for these key concepts.
+                </p>
+              </div>
             </div>
           )}
 

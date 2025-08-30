@@ -1,6 +1,6 @@
 import { connectToDatabase } from '../../lib/db';
 import Question from '../models/question.model';
-import History from '../models/history.model';
+import QuizSession from '../models/quiz-session.model';
 import Category from '../models/category.model';
 import SubCategory from '../models/subcategory.model';
 import { Types } from 'mongoose';
@@ -94,25 +94,34 @@ export async function submitQuiz(userId: string, submission: { quizId?: string; 
 	const totalQuestions = answersRecord.length;
 	const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
-	const history = new History({
+	const quizSession = new QuizSession({
 		userId,
-		quizId: submission.quizId || null,
-		score,
+		category: submission.quizId || null, // Use quizId as category for now
+		categoryName: 'Unknown', // Default category name
+		questionType: 'multiple_choice', // Default question type
+		difficulty: 'medium', // Default difficulty
 		totalQuestions,
 		correctAnswers,
-		answers: answersRecord,
-		startedAt: new Date(),
+		score,
+		answers: answersRecord.map(a => ({
+			questionId: a.questionId,
+			questionText: 'Question', // Default text
+			selectedAnswer: a.selectedOption,
+			correctAnswer: 'Unknown', // Will be filled by backend
+			isCorrect: a.isCorrect
+		})),
 		completedAt: new Date(),
+		timeSpent: 0 // Default time
 	});
 
-	const saved = await history.save();
+	const saved = await quizSession.save();
 	return { score, correctAnswers, totalQuestions, history: saved };
 }
 
 export async function getHistoryForUser(userId: string) {
 	await connectToDatabase();
 	if (!Types.ObjectId.isValid(userId)) return [];
-	return History.find({ userId }).sort({ createdAt: -1 }).lean();
+	return QuizSession.find({ userId }).sort({ createdAt: -1 }).lean();
 }
 
 export default {

@@ -12,6 +12,8 @@ import { useI18n } from "@/components/i18n"
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 import GradientLoader from "@/components/gradient-loader"
+import { ClientOnly } from "@/components/ui/client-only"
+import Link from "next/link"
 
 export default function LoginPage() {
   const { dict, lang } = useI18n()
@@ -89,25 +91,27 @@ export default function LoginPage() {
                 <CardTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{dict.login.title}</CardTitle>
               </CardHeader>
               <CardContent className="relative">
-                {avatarUrl && (
-                  <div className="flex justify-center mb-4">
-                    <img src={avatarUrl} alt="avatar" className="h-20 w-20 rounded-full object-cover" />
-                  </div>
-                )}
+                <ClientOnly>
+                  {avatarUrl && (
+                    <div className="flex justify-center mb-4">
+                      <img src={avatarUrl} alt="avatar" className="h-20 w-20 rounded-full object-cover" />
+                    </div>
+                  )}
+                </ClientOnly>
                 <form onSubmit={signIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-zinc-700 dark:text-zinc-300">
                       {dict.login.username}
                     </Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="email"
                         type="email"
+                        placeholder={dict.login.usernamePh}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder={dict.login.usernamePh}
-                        className="pl-9 rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        className="pl-10 bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
                         required
                       />
                     </div>
@@ -117,59 +121,74 @@ export default function LoginPage() {
                       {dict.login.password}
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="password"
                         type="password"
+                        placeholder={dict.login.passwordPh}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder={dict.login.passwordPh}
-                        className="pl-9 rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        className="pl-10 bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
                         required
                       />
                     </div>
                   </div>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full rounded-full text-white bg-gradient-to-r from-fuchsia-600 via-indigo-600 to-pink-600 hover:from-fuchsia-500 hover:via-indigo-500 hover:to-pink-500"
-                  >
-                    {loading ? <GradientLoader size={18} /> : dict.login.signIn}
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      <GradientLoader className="h-4 w-4" />
+                    ) : (
+                      <>
+                        <span>{dict.login.submit}</span>
+                      </>
+                    )}
                   </Button>
                 </form>
 
-                <div className="my-4 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-white/60 dark:bg-white/10" />
-                  <span className="text-xs text-zinc-500">{dict.login.or}</span>
-                  <div className="h-px flex-1 bg-white/60 dark:bg-white/10" />
+                {message && <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">{message}</p>}
+                
+                {/* Signup link */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Don't have an account?{' '}
+                    <Link href="/signup" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium transition-colors">
+                      Sign up
+                    </Link>
+                  </p>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className="rounded-full border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5"
-                    onClick={() => oauth("google")}
-                    disabled={loading}
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    {dict.login.signInWith} Google
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-full border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5"
-                    onClick={() => oauth("github")}
-                    disabled={loading}
-                  >
-                    <Github className="mr-2 h-4 w-4" />
-                    {dict.login.signInWith} GitHub
-                  </Button>
+                <div className="mt-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-white/60 dark:border-white/10" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white/90 dark:bg-white/5 px-2 text-zinc-500">{dict.login.or}</span>
+                    </div>
+                  </div>
+                  <div className="mt-6 grid grid-cols-2 gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => oauth("google")}
+                      disabled={loading}
+                      className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                    >
+                      <Github className="mr-2 h-4 w-4" />
+                      Google
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => oauth("github")}
+                      disabled={loading}
+                      className="bg-white/50 dark:bg-white/5 border-white/60 dark:border-white/10"
+                    >
+                      <Github className="mr-2 h-4 w-4" />
+                      GitHub
+                    </Button>
+                  </div>
                 </div>
-
-                {message && <p className="mt-4 text-sm text-green-600 dark:text-green-400">{message}</p>}
-
-                <div className="mt-6 flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                  <button className="hover:underline">{dict.login.forgot}</button>
-                  <a href="/signup" className="hover:underline">{dict.login.signup}</a>
+                <div className="mt-6 text-center">
+                  <a href="/forgot" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
+                    {dict.login.forgot}
+                  </a>
                 </div>
               </CardContent>
             </Card>
