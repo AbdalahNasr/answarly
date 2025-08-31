@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -14,6 +14,7 @@ import { Search, Plus, X, ChevronRight, ArrowLeft, FolderOpen, Folder } from "lu
 
 export default function QuizSetupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +33,10 @@ export default function QuizSetupPage() {
   const [questionType, setQuestionType] = useState<string>("multiple_choice")
   const [level, setLevel] = useState<string>("medium")
   const [count, setCount] = useState<number>(5)
+  const [availableQuestions, setAvailableQuestions] = useState<number>(0)
+  const [checkingQuestions, setCheckingQuestions] = useState<boolean>(false)
+  const [availableTypes, setAvailableTypes] = useState<Array<{type: string, count: number}>>([])
+  const [autoAdjustedType, setAutoAdjustedType] = useState<string | null>(null)
 
   const questionTypes = [
     { value: "multiple_choice", label: "Multiple Choice" },
@@ -47,6 +52,14 @@ export default function QuizSetupPage() {
     loadRootCategories()
   }, [])
 
+  // Handle URL parameters for pre-selecting category
+  useEffect(() => {
+    const categoryParam = searchParams.get('category')
+    if (categoryParam) {
+      handleCategoryFromUrl(categoryParam)
+    }
+  }, [searchParams, rootCategories])
+
   // Load subcategories when path changes
   useEffect(() => {
     if (selectedPath.length > 0) {
@@ -55,6 +68,79 @@ export default function QuizSetupPage() {
       setCurrentLevelCategories([])
     }
   }, [selectedPath])
+
+  // Check available questions when category or settings change
+  useEffect(() => {
+    if (selectedPath.length > 0 || categoryMode === "custom") {
+      checkAvailableQuestions()
+    }
+  }, [selectedPath, categoryMode, customCategory, questionType, level])
+
+  const handleCategoryFromUrl = async (categoryParam: string) => {
+    try {
+      // First try to find by ID
+      const categoryById = rootCategories.find(cat => cat._id === categoryParam)
+      if (categoryById) {
+        setSelectedPath([categoryById])
+        setCategoryMode("select")
+        return
+      }
+
+      // If not found by ID, try to find by name
+      const categoryByName = rootCategories.find(cat => 
+        cat.name.toLowerCase() === categoryParam.toLowerCase()
+      )
+      if (categoryByName) {
+        setSelectedPath([categoryByName])
+        setCategoryMode("select")
+        return
+      }
+
+      // If not found, set as custom category
+      setCustomCategory(categoryParam)
+      setCategoryMode("custom")
+    } catch (error) {
+      console.error('Error handling category from URL:', error)
+    }
+  }
+
+  const checkAvailableQuestions = async () => {
+    try {
+      setCheckingQuestions(true)
+      
+      const finalCategory = categoryMode === "custom" 
+        ? customCategory 
+        : selectedPath.length > 0 
+          ? selectedPath[selectedPath.length - 1]._id!
+          : ""
+
+      if (!finalCategory.trim()) {
+        setAvailableQuestions(0)
+        return
+      }
+
+      // Call API to get question count for this category
+      const response = await fetch(`/api/questions/count?category=${encodeURIComponent(finalCategory)}&type=${questionType}&level=${level}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        const available = data.count || 0
+        setAvailableQuestions(available)
+        
+        // If available questions are less than current count, adjust count
+        if (available > 0 && available < count) {
+          setCount(available)
+        }
+      } else {
+        setAvailableQuestions(0)
+      }
+    } catch (error) {
+      console.error('Error checking available questions:', error)
+      setAvailableQuestions(0)
+    } finally {
+      setCheckingQuestions(false)
+    }
+  }
 
   const loadRootCategories = async () => {
     try {
@@ -114,7 +200,9 @@ export default function QuizSetupPage() {
   )
 
   const start = () => {
-    const c = Math.max(1, Math.min(count, 50))
+    // Use available questions count if it's less than requested count
+    const finalCount = Math.min(count, availableQuestions > 0 ? availableQuestions : count)
+    const c = Math.max(1, Math.min(finalCount, 50))
     
     // Get the final selected category (deepest level)
     const finalCategory = categoryMode === "custom" 
@@ -135,7 +223,7 @@ export default function QuizSetupPage() {
       count: String(c),
     })
     
-    router.push(`/quiz?${params.toString()}`)
+    router.push(`/quiz/take?${params.toString()}`)
   }
 
   const addCustomCategory = () => {
@@ -154,6 +242,20 @@ export default function QuizSetupPage() {
 
   // Check if current level has subcategories
   const hasSubcategories = currentLevelCategories.length > 0
+
+  // Handle count input change with validation
+  const handleCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value === '') {
+      setCount(1) // Set minimum value if empty
+    } else {
+      const numValue = parseInt(value)
+      if (!isNaN(numValue)) {
+        const validValue = Math.max(1, Math.min(50, numValue))
+        setCount(validValue)
+      }
+    }
+  }
 
   if (loading) {
     return (
@@ -457,9 +559,24 @@ export default function QuizSetupPage() {
                       min="1"
                       max="50"
                     value={count}
-                      onChange={(e) => setCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 5)))}
+                      onChange={handleCountChange}
                     className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
                   />
+                  {checkingQuestions && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Checking available questions...
+                    </p>
+                  )}
+                  {!checkingQuestions && availableQuestions > 0 && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Available questions: {availableQuestions}
+                    </p>
+                  )}
+                  {!checkingQuestions && availableQuestions === 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400">
+                      No questions found for this combination. Please choose a different category or difficulty.
+                    </p>
+                  )}
                   </div>
                 </div>
 

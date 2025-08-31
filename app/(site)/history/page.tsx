@@ -170,12 +170,12 @@ export default function HistoryPage() {
       header: "Correct Answers",
       cell: ({ row }) => {
         const correct = row.getValue("correctAnswers") as number
-        const total = row.getValue("totalQuestions") as number
+        const total = row.original.totalQuestions as number
         return (
           <div className="text-center">
             <div className="font-medium">{correct}/{total}</div>
             <div className="text-xs text-muted-foreground">
-              {Math.round((correct / total) * 100)}% accuracy
+              {total > 0 ? Math.round((correct / total) * 100) : 0}% accuracy
             </div>
           </div>
         )
@@ -238,6 +238,44 @@ export default function HistoryPage() {
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3 text-muted-foreground" />
             <span className="text-sm">{formatDate(date)}</span>
+          </div>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const quizData = row.original
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Create results data similar to what the quiz results page expects
+                const resultsData = {
+                  results: [], // We don't have individual question results in history
+                  summary: {
+                    totalQuestions: quizData.totalQuestions,
+                    correctAnswers: quizData.correctAnswers,
+                    score: quizData.score,
+                    timeSpent: quizData.timeSpent,
+                    category: quizData.categoryName,
+                    difficulty: quizData.difficulty,
+                    questionType: quizData.questionType
+                  }
+                }
+                
+                // Store in localStorage and navigate to results page
+                localStorage.setItem('quizResults', JSON.stringify(resultsData))
+                const resultsParam = encodeURIComponent(JSON.stringify(resultsData))
+                window.open(`/quiz/results?results=${resultsParam}`, '_blank')
+              }}
+              className="h-8 px-3 text-xs"
+            >
+              View Details
+            </Button>
           </div>
         )
       },

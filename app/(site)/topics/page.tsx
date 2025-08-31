@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { getAllTopics } from "@/lib/topics"
+import { useMemo, useState, useEffect } from "react"
+import { getTrendingTopics, type Topic } from "@/lib/topics"
 import { useI18n } from "@/components/i18n"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -9,10 +9,27 @@ import TopicCard from "@/components/topic-card"
 import Reveal from "@/components/reveal"
 
 export default function TopicsIndexPage() {
-  const topics = getAllTopics()
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [loading, setLoading] = useState(true)
   const { dict, lang } = useI18n()
   const [q, setQ] = useState("")
   const [activeTags, setActiveTags] = useState<string[]>([])
+
+  // Fetch trending topics on component mount
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const trendingTopics = await getTrendingTopics(20) // Get more topics for the topics page
+        setTopics(trendingTopics)
+      } catch (error) {
+        console.error('Error fetching topics:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTopics()
+  }, [])
 
   const allTags = useMemo(() => {
     const s = new Set<string>()
@@ -87,7 +104,14 @@ export default function TopicsIndexPage() {
           </div>
 
           <div className="mt-10 grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.length === 0 ? (
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-2xl"></div>
+                </div>
+              ))
+            ) : filtered.length === 0 ? (
               <p className="text-zinc-600 dark:text-zinc-400">{dict.ui.noResults}</p>
             ) : (
               filtered.map((t, i) => (

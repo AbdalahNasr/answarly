@@ -137,7 +137,7 @@ export default function Navbar() {
     { href: "/history", label: dict.nav.history },
     { href: "/leaderboard", label: dict.nav.leaderboard },
     { href: "/qa", label: dict.nav.qa },
-    { href: "/quiz", label: dict.nav.quiz },
+    { href: "/quiz/setup", label: dict.nav.quiz },
   ]
 
   // Add My Questions link if user is logged in

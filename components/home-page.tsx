@@ -2,13 +2,13 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Reveal from "@/components/reveal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { useI18n } from "@/components/i18n"
-import { getAllTopics } from "@/lib/topics"
+import { getTrendingTopics, type Topic } from "@/lib/topics"
 import TopicCard from "@/components/topic-card"
 import CardSwap from "@/src/reactbitsComponents/CardSwap/CardSwap"
 import RippleGrid from "@/src/backgrounds /RippleGrid/RippleGrid"
@@ -16,8 +16,25 @@ import RippleGrid from "@/src/backgrounds /RippleGrid/RippleGrid"
 export default function HomeClient() {
   const { dict, lang } = useI18n()
   const [query, setQuery] = useState("")
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const topics = getAllTopics()
+  // Fetch trending topics on component mount
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const trendingTopics = await getTrendingTopics(6)
+        setTopics(trendingTopics)
+      } catch (error) {
+        console.error('Error fetching topics:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTopics()
+  }, [])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return topics
@@ -115,7 +132,14 @@ export default function HomeClient() {
           </div>
 
           <div className="mt-10 grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.length === 0 ? (
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-2xl"></div>
+                </div>
+              ))
+            ) : filtered.length === 0 ? (
               <p className="text-zinc-600 dark:text-zinc-400">{dict.ui.noResults}</p>
             ) : (
               filtered.map((t, i) => (

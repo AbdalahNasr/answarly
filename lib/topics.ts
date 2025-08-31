@@ -6,9 +6,12 @@ export type Topic = {
   description: Localized<string>
   content: Localized<string>
   tags: string[]
+  questionCount?: number
+  categoryId?: string
 }
 
-const topics: Topic[] = [
+// Fallback static topics in case API fails
+const fallbackTopics: Topic[] = [
   {
     slug: "web-development",
     title: { en: "Web Development", ar: "تطوير الويب" },
@@ -80,12 +83,67 @@ const topics: Topic[] = [
   },
 ]
 
-export function getAllTopics() {
-  return topics
+// Fetch trending topics from API
+export async function getTrendingTopics(limit: number = 6): Promise<Topic[]> {
+  try {
+    const response = await fetch(`/api/categories/trending?limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.topics || [];
+  } catch (error) {
+    console.error('Error fetching trending topics:', error);
+    // Return fallback topics if API fails
+    return fallbackTopics.slice(0, limit);
+  }
 }
+
+// Legacy function for backward compatibility - now fetches from API
+export async function getAllTopics(): Promise<Topic[]> {
+  return await getTrendingTopics();
+}
+
+// Synchronous version for components that need it immediately
+export function getAllTopicsSync(): Topic[] {
+  return fallbackTopics;
+}
+
+// Get topic by slug - tries API first, falls back to static data
+export async function getTopicBySlug(slug: string): Promise<Topic | null> {
+  try {
+    const response = await fetch(`/api/categories/trending?limit=100`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const topic = data.topics?.find((t: Topic) => t.slug === slug);
+      if (topic) return topic;
+    }
+  } catch (error) {
+    console.error('Error fetching topic by slug:', error);
+  }
+
+  // Fallback to static data
+  return fallbackTopics.find((t) => t.slug === slug) || null;
+}
+
+// Synchronous version for static generation
+export function getTopicBySlugSync(slug: string): Topic | null {
+  return fallbackTopics.find((t) => t.slug === slug) || null;
+}
+
 export function getAllTopicSlugs() {
-  return topics.map((t) => t.slug)
-}
-export function getTopicBySlug(slug: string) {
-  return topics.find((t) => t.slug === slug)
+  return fallbackTopics.map((t) => t.slug)
 }

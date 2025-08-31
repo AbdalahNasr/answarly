@@ -5,9 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Topic } from "@/lib/topics"
 
 export default function TopicCard({ topic, lang }: { topic: Topic; lang: "en" | "ar" }) {
+  // Create quiz setup URL with category information
+  const quizSetupUrl = topic.categoryId 
+    ? `/quiz/setup?category=${topic.categoryId}`
+    : `/quiz/setup?category=${topic.title[lang]}`
+
   return (
     <Link
-      href={`/topics/${topic.slug}`}
+      href={quizSetupUrl}
       className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-2xl"
     >
       <Card className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl">
