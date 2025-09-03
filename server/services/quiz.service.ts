@@ -41,9 +41,10 @@ export async function startQuiz(opts: { categoryId?: string; subCategoryId?: str
 	
 	if (opts.difficulty) filter.difficulty = opts.difficulty;
 	
-	// Handle question type filtering (for now, all questions are multiple choice)
-	// In the future, you can add a type field to the Question model
-	// if (opts.questionType) filter.type = opts.questionType;
+	// Handle question type filtering
+	if (opts.questionType && opts.questionType !== 'all') {
+		filter.type = opts.questionType;
+	}
 	
 	const limit = opts.limit && opts.limit > 0 ? opts.limit : 10;
 	
@@ -53,15 +54,14 @@ export async function startQuiz(opts: { categoryId?: string; subCategoryId?: str
 		.limit(limit)
 		.lean();
 	
-	// Use the requested question type
-	const questionType = opts.questionType || 'multiple_choice';
-	
 	// Do not expose correctAnswer
 	const payload = questions.map((q: any) => ({
 		id: q._id,
 		question: q.text, // Map text to question for frontend compatibility
-		type: questionType, // Use the requested question type
+		type: q.type || 'multiple_choice', // Use the actual question type from database
 		options: q.options,
+		correctAnswer: q.correctAnswer, // Include correct answer for evaluation
+		reason: q.reason, // Include explanation
 		difficulty: q.difficulty,
 		category: q.category?.name || 'Unknown', // Use category name
 		categoryPath: q.category?.path || [], // Use category path for hierarchical display
@@ -82,7 +82,20 @@ export async function submitQuiz(userId: string, submission: { quizId?: string; 
 	let correctAnswers = 0;
 	const answersRecord = submission.answers.map((a) => {
 		const q = questionMap[a.questionId];
-		const isCorrect = q ? String(a.selectedOption).trim() === String(q.correctAnswer).trim() : false;
+		let isCorrect = false;
+		
+		if (q) {
+			// Handle different question types
+			if (q.type === 'true_false') {
+				isCorrect = String(a.selectedOption).toLowerCase() === String(q.correctAnswer).toLowerCase();
+			} else if (q.type === 'multiple_choice') {
+				isCorrect = String(a.selectedOption).trim() === String(q.correctAnswer).trim();
+			} else {
+				// For code_snippet and open_ended, consider any answer as correct for now
+				isCorrect = String(a.selectedOption).trim() !== '';
+			}
+		}
+		
 		if (isCorrect) correctAnswers++;
 		return {
 			questionId: a.questionId,
@@ -98,7 +111,7 @@ export async function submitQuiz(userId: string, submission: { quizId?: string; 
 		userId,
 		category: submission.quizId || null, // Use quizId as category for now
 		categoryName: 'Unknown', // Default category name
-		questionType: 'multiple_choice', // Default question type
+		questionType: 'mixed', // Default question type (since we support multiple types now)
 		difficulty: 'medium', // Default difficulty
 		totalQuestions,
 		correctAnswers,

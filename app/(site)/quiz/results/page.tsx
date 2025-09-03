@@ -22,7 +22,6 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 interface QuizResult {
-  questionId: string
   questionText: string
   userAnswer: string
   correctAnswer: string
@@ -49,14 +48,25 @@ export default function QuizResultsPage() {
   const [loading, setLoading] = useState(true)
   const [sharing, setSharing] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [referrer, setReferrer] = useState<string>('/quiz/setup')
 
   useEffect(() => {
     // Get results from URL parameters or localStorage
     const resultsParam = searchParams.get('results')
+    const referrerParam = searchParams.get('referrer')
+    
     if (resultsParam) {
       try {
         const parsedResults = JSON.parse(decodeURIComponent(resultsParam))
-        setResults(parsedResults.results || [])
+        // Filter out questionId from results to avoid displaying IDs
+        const cleanResults = (parsedResults.results || []).map((result: any) => ({
+          questionText: result.questionText,
+          userAnswer: result.userAnswer,
+          correctAnswer: result.correctAnswer,
+          isCorrect: result.isCorrect,
+          explanation: result.explanation
+        }))
+        setResults(cleanResults)
         setSummary(parsedResults.summary || null)
       } catch (error) {
         console.error('Error parsing results:', error)
@@ -66,6 +76,13 @@ export default function QuizResultsPage() {
     } else {
       loadResultsFromStorage()
     }
+    
+    // Set referrer for dynamic back button
+    if (referrerParam) {
+      const decodedReferrer = decodeURIComponent(referrerParam)
+      setReferrer(decodedReferrer)
+    }
+    
     setLoading(false)
   }, [searchParams])
 
@@ -74,7 +91,15 @@ export default function QuizResultsPage() {
       const storedResults = localStorage.getItem('quizResults')
       if (storedResults) {
         const parsed = JSON.parse(storedResults)
-        setResults(parsed.results || [])
+        // Filter out questionId from results to avoid displaying IDs
+        const cleanResults = (parsed.results || []).map((result: any) => ({
+          questionText: result.questionText,
+          userAnswer: result.userAnswer,
+          correctAnswer: result.correctAnswer,
+          isCorrect: result.isCorrect,
+          explanation: result.explanation
+        }))
+        setResults(cleanResults)
         setSummary(parsed.summary || null)
       }
     } catch (error) {
@@ -94,6 +119,41 @@ export default function QuizResultsPage() {
     if (score >= 70) return { text: "Good", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" }
     if (score >= 60) return { text: "Fair", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" }
     return { text: "Needs Improvement", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" }
+  }
+
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) {
+      return `${seconds}s`
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+      if (remainingSeconds === 0) {
+        return `${minutes}m`
+      }
+      return `${minutes}m ${remainingSeconds}s`
+    } else {
+      const hours = Math.floor(seconds / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      const remainingSeconds = seconds % 60
+      if (minutes === 0 && remainingSeconds === 0) {
+        return `${hours}h`
+      } else if (remainingSeconds === 0) {
+        return `${hours}h ${minutes}m`
+      }
+      return `${hours}h ${minutes}m ${remainingSeconds}s`
+    }
+  }
+
+  const getBackButtonInfo = () => {
+    if (referrer.includes('/history')) {
+      return { text: 'Back to History', href: '/history' }
+    } else if (referrer.includes('/quiz/take')) {
+      return { text: 'Back to Quiz Setup', href: '/quiz/setup' }
+    } else if (referrer.includes('/quiz/setup')) {
+      return { text: 'Back to Quiz Setup', href: '/quiz/setup' }
+    } else {
+      return { text: 'Back to Quiz Setup', href: '/quiz/setup' }
+    }
   }
 
   const shareResults = async () => {
@@ -194,7 +254,7 @@ export default function QuizResultsPage() {
     report += `Total Questions: ${summary.totalQuestions}\n`
     report += `Correct Answers: ${summary.correctAnswers}\n`
     report += `Score: ${summary.score}%\n`
-    report += `Time Spent: ${Math.round(summary.timeSpent / 60)} minutes\n\n`
+         report += `Time Spent: ${formatTime(summary.timeSpent)}\n\n`
     
     if (results.length > 0) {
       report += `DETAILED RESULTS\n`
@@ -270,15 +330,23 @@ export default function QuizResultsPage() {
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
                 Quiz Results
               </h1>
-              <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                {summary.category} • {summary.difficulty} • {summary.questionType}
-              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700">
+                  {summary.category}
+                </Badge>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700">
+                  {summary.difficulty}
+                </Badge>
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700">
+                  {summary.questionType}
+                </Badge>
+              </div>
             </div>
             <div className="flex gap-2">
-              <Link href="/history">
+              <Link href={getBackButtonInfo().href}>
                 <Button variant="outline" className="rounded-full">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to History
+                  {getBackButtonInfo().text}
                 </Button>
               </Link>
             </div>
@@ -311,13 +379,13 @@ export default function QuizResultsPage() {
                     <div className="text-sm text-zinc-600 dark:text-zinc-400">Correct</div>
                   </div>
                   <Separator orientation="vertical" />
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {Math.round(summary.timeSpent / 60)}m
-                    </div>
-                    <div className="text-sm text-zinc-600 dark:text-zinc-400">Time</div>
-                  </div>
+                                     <div className="text-center">
+                     <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-1">
+                       <Clock className="h-4 w-4" />
+                       {formatTime(summary.timeSpent)}
+                     </div>
+                     <div className="text-sm text-zinc-600 dark:text-zinc-400">Time</div>
+                   </div>
                 </div>
               </div>
             </CardHeader>
@@ -368,7 +436,7 @@ export default function QuizResultsPage() {
               </h2>
               
               {results.map((result, index) => (
-                <Card key={result.questionId} className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
+                <Card key={index} className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
                   <span className="pointer-events-none absolute -inset-1 opacity-0 sm:opacity-100 bg-gradient-to-br from-fuchsia-500/10 via-indigo-500/10 to-pink-500/10" />
                   <CardContent className="relative p-6">
                     <div className="flex items-start gap-4">
@@ -453,6 +521,15 @@ export default function QuizResultsPage() {
           )}
         </div>
       </section>
+      
+      {/* Footer */}
+      <footer className="mt-20 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="container mx-auto px-4 md:px-6 py-8">
+          <div className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+            © 2025 All rights reserved for Abdallah Nasr Ali
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }

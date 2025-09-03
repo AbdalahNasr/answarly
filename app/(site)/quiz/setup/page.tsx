@@ -33,6 +33,7 @@ export default function QuizSetupPage() {
   const [questionType, setQuestionType] = useState<string>("multiple_choice")
   const [level, setLevel] = useState<string>("medium")
   const [count, setCount] = useState<number>(5)
+  const [timeLimit, setTimeLimit] = useState<number | null>(null)
   const [availableQuestions, setAvailableQuestions] = useState<number>(0)
   const [checkingQuestions, setCheckingQuestions] = useState<boolean>(false)
   const [availableTypes, setAvailableTypes] = useState<Array<{type: string, count: number}>>([])
@@ -218,10 +219,20 @@ export default function QuizSetupPage() {
 
     const params = new URLSearchParams({
       category: finalCategory,
+      categoryName: categoryMode === "custom" 
+        ? customCategory 
+        : selectedPath.length > 0 
+          ? selectedPath[selectedPath.length - 1].name
+          : "General",
       type: questionType,
       level,
       count: String(c),
     })
+    
+    // Add time limit to params if set
+    if (timeLimit) {
+      params.append('timeLimit', String(timeLimit))
+    }
     
     router.push(`/quiz/take?${params.toString()}`)
   }
@@ -253,6 +264,20 @@ export default function QuizSetupPage() {
       if (!isNaN(numValue)) {
         const validValue = Math.max(1, Math.min(50, numValue))
         setCount(validValue)
+      }
+    }
+  }
+
+  // Handle time limit input change with validation
+  const handleTimeLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value === '') {
+      setTimeLimit(null) // Clear time limit if empty
+    } else {
+      const numValue = parseInt(value)
+      if (!isNaN(numValue)) {
+        const validValue = Math.max(1, Math.min(180, numValue)) // 1 minute to 3 hours
+        setTimeLimit(validValue)
       }
     }
   }
@@ -577,6 +602,22 @@ export default function QuizSetupPage() {
                       No questions found for this combination. Please choose a different category or difficulty.
                     </p>
                   )}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label className="text-sm">{"Time Limit (minutes) - Optional"}</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="180"
+                      placeholder="Leave empty for no time limit"
+                      value={timeLimit || ""}
+                      onChange={handleTimeLimitChange}
+                      className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                    />
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Set a time limit for the quiz (1-180 minutes). Leave empty for unlimited time.
+                    </p>
                   </div>
                 </div>
 

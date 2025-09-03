@@ -26,8 +26,8 @@ const Confetti = ({ type }: { type: 'success' | 'good' | 'average' | 'fail' }) =
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
-    // Create particles based on type
-    const particleCount = type === 'success' ? 150 : type === 'good' ? 100 : type === 'average' ? 50 : 30
+         // Create particles based on type
+     const particleCount = type === 'success' ? 200 : type === 'good' ? 150 : type === 'average' ? 100 : 80
     const newParticles = []
 
     for (let i = 0; i < particleCount; i++) {
@@ -36,7 +36,7 @@ const Confetti = ({ type }: { type: 'success' | 'good' | 'average' | 'fail' }) =
         y: -10,
         vx: (Math.random() - 0.5) * 8,
         vy: Math.random() * 3 + 2,
-        size: Math.random() * 4 + 2,
+                 size: Math.random() * 6 + 3,
         color: type === 'success' 
           ? ['#FFD700', '#FFA500', '#FF6B6B', '#4ECDC4', '#45B7D1'][Math.floor(Math.random() * 5)]
           : type === 'good'
@@ -113,8 +113,8 @@ const Confetti = ({ type }: { type: 'success' | 'good' | 'average' | 'fail' }) =
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-40"
-      style={{ zIndex: 40 }}
+      className="fixed inset-0 pointer-events-none z-[9998] opacity-0"
+      style={{ zIndex: 9998 }}
     />
   )
 }
@@ -147,8 +147,11 @@ export function QuizAnimation({
   }
 
   useEffect(() => {
+    console.log('QuizAnimation useEffect triggered:', { isSuccess, score, totalQuestions, percentage })
+    
     // Start animation sequence
     setShowAnimation(true)
+    console.log('Animation started')
     
     // Animate progress
     const progressInterval = setInterval(() => {
@@ -163,18 +166,21 @@ export function QuizAnimation({
     
     setTimeout(() => {
       setShowScore(true)
-    }, 1000)
+      console.log('Score shown')
+    }, 300)
     
     setTimeout(() => {
       setShowMessage(true)
-    }, 2000)
+      console.log('Message shown')
+    }, 600)
     
     setTimeout(() => {
+      console.log('Animation complete, calling onAnimationComplete')
       onAnimationComplete?.()
-    }, 4000)
+    }, 1000)
 
     return () => clearInterval(progressInterval)
-  }, [onAnimationComplete, percentage])
+  }, [onAnimationComplete, percentage, isSuccess, score, totalQuestions])
 
   const getMessage = () => {
     if (isSuccess) {
@@ -187,102 +193,102 @@ export function QuizAnimation({
     }
   }
 
-  const getIcon = () => {
-    if (isSuccess) {
-      if (isExcellent) return <Trophy className="w-16 h-16 text-yellow-400" />
-      return <CheckCircle className="w-16 h-16 text-green-400" />
-    }
-    return <XCircle className="w-16 h-16 text-red-400" />
-  }
+     const getIcon = () => {
+     if (isSuccess) {
+       if (isExcellent) return <Trophy className="w-24 h-24 text-yellow-500 drop-shadow-lg" />
+       return <CheckCircle className="w-24 h-24 text-green-500 drop-shadow-lg" />
+     }
+     return <XCircle className="w-24 h-24 text-red-500 drop-shadow-lg" />
+   }
 
   return (
-    <>
-      {/* Confetti Animation */}
-      <Confetti type={getAnimationType()} />
+         <>
+       {/* Confetti Animation */}
+       <Confetti type={getAnimationType()} />
       
-      {/* Main Animation Overlay */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className={cn(
-          "relative p-8 rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl border border-zinc-200 dark:border-zinc-700",
-          "transform transition-all duration-700 ease-out",
-          showAnimation ? "scale-100 opacity-100" : "scale-75 opacity-0"
-        )}>
-          {/* Background glow */}
-          <div className={cn(
-            "absolute inset-0 rounded-2xl transition-all duration-1000",
-            isSuccess 
-              ? "bg-gradient-to-br from-green-500/20 to-emerald-500/20" 
-              : "bg-gradient-to-br from-red-500/20 to-pink-500/20"
-          )} />
+                     {/* Main Animation Overlay - Fully Transparent */}
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-transparent pointer-events-none">
+                   <div className={cn(
+            "relative p-12 rounded-3xl bg-transparent border-transparent shadow-none",
+            "transform transition-all duration-700 ease-out",
+            "ring-0",
+            showAnimation ? "scale-100 opacity-0" : "scale-75 opacity-0"
+          )}>
+                                           {/* Background glow - Invisible */}
+            <div className={cn(
+              "absolute inset-0 rounded-3xl transition-all duration-1000 bg-transparent"
+            )} />
+            
+            {/* Enhanced glow effect - Invisible */}
+            <div className={cn(
+              "absolute inset-0 rounded-3xl transition-all duration-1000 blur-xl bg-transparent"
+            )} />
           
           <div className="relative z-10 text-center">
-            {/* Custom Progress Circle */}
-            <div className="mx-auto mb-6 w-32 h-32 relative">
-              <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 128 128">
-                {/* Background circle */}
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="60"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  className="text-zinc-200 dark:text-zinc-700"
-                />
-                {/* Progress circle */}
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="60"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  className={cn(
-                    "transition-all duration-1000 ease-out",
-                    isSuccess 
-                      ? isExcellent ? "text-yellow-400" : isGood ? "text-green-400" : "text-blue-400"
-                      : "text-red-400"
-                  )}
-                  style={{
-                    strokeDasharray: `${2 * Math.PI * 60}`,
-                    strokeDashoffset: `${2 * Math.PI * 60 * (1 - progressValue / 100)}`,
-                  }}
-                />
+                         {/* Custom Progress Circle */}
+             <div className="mx-auto mb-8 w-40 h-40 relative">
+               <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 160 160">
+                                                   {/* Background circle - Invisible */}
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="75"
+                    stroke="transparent"
+                    strokeWidth="4"
+                    fill="none"
+                    className="text-transparent"
+                  />
+                  {/* Progress circle - Invisible */}
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="75"
+                    stroke="transparent"
+                    strokeWidth="4"
+                    fill="none"
+                   className={cn(
+                     "transition-all duration-1000 ease-out text-transparent"
+                   )}
+                                      style={{
+                      strokeDasharray: `${2 * Math.PI * 75}`,
+                      strokeDashoffset: `${2 * Math.PI * 75 * (1 - progressValue / 100)}`,
+                    }}
+                 />
               </svg>
              
               {/* Center content */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className={cn(
-                  "transition-all duration-700 delay-300",
-                  showScore ? "opacity-100 scale-100" : "opacity-0 scale-75"
-                )}>
-                  <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {progressValue}%
-                  </div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {score}/{totalQuestions}
-                  </div>
-                </div>
+                                 <div className={cn(
+                   "transition-all duration-700 delay-300",
+                   showScore ? "opacity-100 scale-100" : "opacity-0 scale-75"
+                 )}>
+                                       <div className="text-4xl font-bold text-transparent">
+                      {progressValue}%
+                    </div>
+                    <div className="text-lg font-semibold text-transparent">
+                      {score}/{totalQuestions}
+                    </div>
+                 </div>
               </div>
             </div>
             
-            {/* Icon */}
-            <div className={cn(
-              "mx-auto mb-4 transform transition-all duration-700",
-              showAnimation ? "scale-100 rotate-0" : "scale-0 rotate-180"
-            )}>
-              {getIcon()}
-            </div>
-            
-            {/* Message */}
-            <div className={cn(
-              "transition-all duration-700 delay-500",
-              showMessage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            )}>
-              <p className="text-lg text-zinc-700 dark:text-zinc-300">
-                {getMessage()}
-              </p>
-            </div>
+                         {/* Icon - Invisible */}
+             <div className={cn(
+               "mx-auto mb-4 transform transition-all duration-700 opacity-0",
+               showAnimation ? "scale-100 rotate-0" : "scale-0 rotate-180"
+             )}>
+               {getIcon()}
+             </div>
+             
+                          {/* Message - Invisible */}
+              <div className={cn(
+                "transition-all duration-700 delay-500 opacity-0",
+                showMessage ? "opacity-0 translate-y-0" : "opacity-0 translate-y-4"
+              )}>
+                <p className="text-2xl font-bold text-transparent">
+                  {getMessage()}
+                </p>
+              </div>
           </div>
         </div>
       </div>

@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation"
 export default function ConditionalFooter() {
   const pathname = usePathname()
   const isAuthPage = pathname === '/login' || pathname === '/signup'
+  const isQuizResultsPage = pathname === '/quiz/results'
   
-  if (isAuthPage) {
+  if (isAuthPage || isQuizResultsPage) {
     return null
   }
   

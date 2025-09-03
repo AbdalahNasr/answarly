@@ -270,7 +270,8 @@ export default function HistoryPage() {
                 // Store in localStorage and navigate to results page
                 localStorage.setItem('quizResults', JSON.stringify(resultsData))
                 const resultsParam = encodeURIComponent(JSON.stringify(resultsData))
-                window.open(`/quiz/results?results=${resultsParam}`, '_blank')
+                const referrer = '/history'
+                window.open(`/quiz/results?results=${resultsParam}&referrer=${encodeURIComponent(referrer)}`, '_blank')
               }}
               className="h-8 px-3 text-xs"
             >
