@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
 import { ClientOnly } from "@/components/ui/client-only"
+import { signOut } from "next-auth/react"
 
 export default function Navbar() {
   const { dict, lang } = useI18n()
@@ -42,17 +43,54 @@ export default function Navbar() {
       try {
         const raw = localStorage.getItem('answerly-user')
         const token = localStorage.getItem('answerly-token')
-        
-        console.log('Navbar useEffect - localStorage contents:', {
-          raw,
-          token,
-          hasRaw: !!raw,
-          hasToken: !!token
-        })
-        
-        if (raw && token) {
+
+        // #region agent log
+        fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Debug-Session-Id': '22bd0e',
+          },
+          body: JSON.stringify({
+            sessionId: '22bd0e',
+            runId: 'initial',
+            hypothesisId: 'H2',
+            location: 'components/navbar.tsx:43',
+            message: 'Navbar loaded user and token from localStorage',
+            data: {
+              hasUserRaw: !!raw,
+              hasToken: !!token,
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => { })
+        // #endregion agent log
+
+        if (raw) {
           const userData = JSON.parse(raw)
-          console.log('Navbar useEffect - parsed user data:', userData)
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Debug-Session-Id': '22bd0e',
+            },
+            body: JSON.stringify({
+              sessionId: '22bd0e',
+              runId: 'initial',
+              hypothesisId: 'H2',
+              location: 'components/navbar.tsx:54',
+              message: 'Navbar parsed user data from localStorage',
+              data: {
+                userId: userData.id || userData._id,
+                provider: userData.provider,
+              },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => { })
+          // #endregion agent log
+
           setUser(userData)
         } else {
           setUser(null)
@@ -72,10 +110,16 @@ export default function Navbar() {
     return () => clearInterval(interval)
   }, [mounted])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirect: false })
+    } catch (e) {
+      // ignore, we'll still clear local state
+    }
     localStorage.removeItem('answerly-user')
     localStorage.removeItem('answerly-token')
     setUser(null)
+    window.dispatchEvent(new Event('user-updated'))
     toast({ title: 'Logged out', description: 'You have been successfully logged out.' })
     router.push('/')
   }
@@ -88,7 +132,7 @@ export default function Navbar() {
       
       console.log('Refreshing user data:', { raw, token })
       
-      if (raw && token) {
+      if (raw) {
         const userData = JSON.parse(raw)
         console.log('Parsed user data:', userData)
         setUser(userData)
@@ -129,7 +173,7 @@ export default function Navbar() {
   }
 
   const token = mounted ? localStorage.getItem('answerly-token') : null
-  const isLoggedIn = mounted && (user?.id || user?._id) && token
+  const isLoggedIn = mounted && (user?.id || user?._id)
 
   const mainLinks = [
     { href: "/", label: dict.nav.home },

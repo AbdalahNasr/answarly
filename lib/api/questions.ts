@@ -1,6 +1,18 @@
 export type CreateQuestionPayload = {
   text: string
-  type: 'multiple_choice' | 'true_false' | 'code_snippet' | 'open_ended'
+  type:
+    | 'multiple_choice'
+    | 'true_false'
+    | 'code_snippet'
+    | 'open_ended'
+    | 'listening'
+    | 'fill_in_blank'
+    | 'match_pairs'
+    | 'ordering'
+    | 'math_equation'
+    | 'graph_chart'
+    | 'diagram_label'
+    | 'image_mcq'
   options?: string[]
   correctAnswer?: string
   keywords?: string[]
@@ -8,6 +20,14 @@ export type CreateQuestionPayload = {
   subCategory?: string
   reason?: string
   difficulty?: "easy" | "medium" | "hard"
+  audioUrl?: string
+  listeningAnswerFormat?: "mcq" | "open"
+  blankTemplate?: string
+  blankAnswers?: string[]
+  matchPairs?: Array<{ left: string; right: string }>
+  orderItems?: string[]
+  latex?: string
+  diagramLabels?: Array<{ x: number; y: number; label: string }>
 }
 
 export async function createQuestionApi(payload: CreateQuestionPayload) {

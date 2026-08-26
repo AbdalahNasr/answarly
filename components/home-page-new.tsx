@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useMemo, useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import Reveal from "@/components/reveal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +15,7 @@ import RippleGrid from "@/src/backgrounds /RippleGrid/RippleGrid"
 
 // Custom CardSwap component that matches React Bits exactly
 const CustomCardSwap = () => {
+  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout>()
 
@@ -31,6 +33,7 @@ const CustomCardSwap = () => {
 
   const cards = [
     {
+      id: "card-customizable",
       title: "Customizable",
       description: "Tailored to your needs",
       icon: "3",
@@ -38,6 +41,7 @@ const CustomCardSwap = () => {
       bgColor: "from-slate-800/90 via-purple-900/80 to-slate-900/90"
     },
     {
+      id: "card-smooth",
       title: "Smooth",
       description: "Seamless interactions",
       icon: "○",
@@ -45,6 +49,7 @@ const CustomCardSwap = () => {
       bgColor: "from-slate-800/90 via-indigo-900/80 to-slate-900/90"
     },
     {
+      id: "card-reliable",
       title: "Reliable",
       description: "Built to last",
       icon: "</>",
@@ -53,8 +58,13 @@ const CustomCardSwap = () => {
     }
   ]
 
+  const handleCardClick = (id: string) => {
+    // Standardized redirection workflow to QA (Create Question) page
+    router.push(`/qa?stitchId=${id}`)
+  }
+
   return (
-    <div className="relative w-[400px] h-[300px] perspective-[1000px]">
+    <div className="relative w-full max-w-[400px] h-[300px] perspective-[1000px] mx-auto lg:mx-0">
       {cards.map((card, index) => {
         const isActive = index === currentIndex
         const isNext = index === (currentIndex + 1) % 3
@@ -69,11 +79,11 @@ const CustomCardSwap = () => {
           zIndex = 30
           opacity = 1
         } else if (isNext) {
-          transform = "translateZ(-60px) translateX(60px) translateY(-70px)"
+          transform = "translateZ(-60px) translateX(30px) translateY(-40px)"
           zIndex = 20
           opacity = 0.8
         } else if (isPrev) {
-          transform = "translateZ(-120px) translateX(120px) translateY(-140px)"
+          transform = "translateZ(-120px) translateX(60px) translateY(-80px)"
           zIndex = 10
           opacity = 0.6
         }
@@ -81,7 +91,8 @@ const CustomCardSwap = () => {
         return (
           <div
             key={index}
-            className={`absolute inset-0 transition-all duration-1000 ease-out rounded-2xl overflow-hidden`}
+            onClick={() => isActive && handleCardClick(card.id)}
+            className={`absolute inset-0 transition-all duration-1000 ease-out rounded-2xl overflow-hidden cursor-pointer group/card`}
             style={{
               transform,
               zIndex,
@@ -89,15 +100,15 @@ const CustomCardSwap = () => {
               transformStyle: 'preserve-3d'
             }}
           >
-            <div className={`w-full h-full p-6 bg-gradient-to-br ${card.bgColor} backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl relative overflow-hidden`}>
+            <div className={`w-full h-full p-6 bg-gradient-to-br ${card.bgColor} backdrop-blur-md border-none shadow-2xl rounded-2xl relative overflow-hidden transition-all duration-500 group-hover/card:shadow-primary/40 group-hover/card:scale-[1.02]`}>
               {/* Glowing background pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-pink-500/10 rounded-2xl"></div>
-              <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-full blur-xl"></div>
-              <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full blur-xl"></div>
+              <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-full blur-xl transition-all duration-700 group-hover/card:scale-150"></div>
+              <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-full blur-xl transition-all duration-700 group-hover/card:scale-150"></div>
               
               <div className="h-full flex flex-col justify-center items-center text-center relative z-10">
-                <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${card.color} flex items-center justify-center mb-4 shadow-lg border border-white/20`}>
-                  <span className="text-4xl font-bold text-white">{card.icon}</span>
+                <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${card.color} flex items-center justify-center mb-4 shadow-lg border border-white/10 group-hover/card:scale-110 transition-transform`}>
+                  <span className="text-3xl font-bold text-white">{card.icon}</span>
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   {card.title}
@@ -105,6 +116,13 @@ const CustomCardSwap = () => {
                 <p className="text-sm text-purple-200">
                   {card.description}
                 </p>
+                
+                {/* Visual hint for clickability */}
+                <div className="mt-4 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary-foreground bg-primary/20 px-3 py-1 rounded-full">
+                    Stitch Design → Quiz
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -219,30 +237,32 @@ export default function HomeClient() {
       </section>
 
       {/* Topics + local search */}
-      <section id="topics" className="w-full border-t border-white/50 dark:border-white/10">
-        <div className="container mx-auto px-4 md:px-6 py-16 md:py-20">
-          <Reveal>
-            <div className="max-w-3xl">
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-                {dict.topics.title}
-              </h2>
-              <p className="mt-2 text-zinc-600 dark:text-zinc-400">{dict.topics.desc}</p>
-            </div>
-          </Reveal>
+      <section id="topics" className="w-full">
+        <div className="container mx-auto px-4 md:px-6 py-16 md:py-24">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <Reveal>
+              <div className="max-w-3xl">
+                <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+                  {dict.topics.title}
+                </h2>
+                <p className="mt-4 text-muted-foreground text-lg">{dict.topics.desc}</p>
+              </div>
+            </Reveal>
 
-          <div className="mt-6 max-w-2xl">
-            <label htmlFor="topic-search" className="sr-only">
-              {dict.ui.searchAria}
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <Input
-                id="topic-search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={dict.ui.searchPlaceholder}
-                className="pl-9 rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 transition-colors"
-              />
+            <div className="w-full max-w-md">
+              <label htmlFor="topic-search" className="sr-only">
+                {dict.ui.searchAria}
+              </label>
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                <Input
+                  id="topic-search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={dict.ui.searchPlaceholder}
+                  className="pl-12 h-14 rounded-2xl bg-muted/50 border-none text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-0 transition-all shadow-inner"
+                />
+              </div>
             </div>
           </div>
 

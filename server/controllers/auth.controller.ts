@@ -36,10 +36,10 @@ export async function login(req: NextRequest) {
   try {
     const { email, password } = await req.json();
     console.log('[auth.controller] login: attempt', { email });
-    
+
     // Ensure database connection is established
     await connectToDatabase();
-    
+
     const { token, user } = await UserService.loginUser(email, password);
     console.log('[auth.controller] login: success', { id: user?.id || user?._id, email: user?.email });
     return NextResponse.json({ token, user });
@@ -51,8 +51,11 @@ export async function login(req: NextRequest) {
 
 export async function forgotPassword(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    const result = await UserService.requestPasswordReset(email);
+    const { email, method } = await req.json();
+    await connectToDatabase();
+    // Import directly to pass the method parameter
+    const { requestPasswordReset } = await import("../services/passwordReset.service");
+    const result = await requestPasswordReset(email, method || "code");
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -62,6 +65,7 @@ export async function forgotPassword(req: NextRequest) {
 export async function resetPassword(req: NextRequest) {
   try {
     const { token, newPassword } = await req.json();
+    await connectToDatabase();
     const result = await UserService.resetPassword(token, newPassword);
     return NextResponse.json(result);
   } catch (error: any) {

@@ -46,6 +46,20 @@ type Dict = {
   qaPage: { title: string; desc: string; placeholder: string; ask: string; answer: string; empty: string }
   historyPage: { title: string; empty: string; clear: string; open: string }
   footer: { rights: (year: number) => string }
+  questionTypes: {
+    multiple_choice: string
+    true_false: string
+    code_snippet: string
+    open_ended: string
+    listening: string
+    fill_in_blank: string
+    match_pairs: string
+    ordering: string
+    math_equation: string
+    graph_chart: string
+    diagram_label: string
+    image_mcq: string
+  }
 }
 
 const en: Dict = {
@@ -107,6 +121,20 @@ const en: Dict = {
     open: "Revisit",
   },
   footer: { rights: (year) => `© ${year} Answerly. All rights reserved.` },
+  questionTypes: {
+    multiple_choice: "Multiple Choice",
+    true_false: "True / False",
+    code_snippet: "Code Snippet",
+    open_ended: "Open Ended",
+    listening: "Listening",
+    fill_in_blank: "Fill in Blank",
+    match_pairs: "Match Pairs",
+    ordering: "Ordering",
+    math_equation: "Math / Equation",
+    graph_chart: "Graph / Chart",
+    diagram_label: "Diagram Label",
+    image_mcq: "Image MCQ",
+  },
 }
 
 const ar: Dict = {
@@ -163,6 +191,20 @@ const ar: Dict = {
   },
   historyPage: { title: "سجلّك", empty: "لا يوجد سجل بعد. اطرح سؤالاً للبدء.", clear: "مسح السجل", open: "عرض" },
   footer: { rights: (year) => `© ${year} Answerly. جميع الحقوق محفوظة.` },
+  questionTypes: {
+    multiple_choice: "خيار من متعدد",
+    true_false: "صح أو خطأ",
+    code_snippet: "مقتطف برمجية",
+    open_ended: "سؤال مفتوح",
+    listening: "استماع",
+    fill_in_blank: "ملء الفراغات",
+    match_pairs: "مطابقة الأزواج",
+    ordering: "ترتيب",
+    math_equation: "معادلة رياضية",
+    graph_chart: "رسم بياني",
+    diagram_label: "تسمية المخطط",
+    image_mcq: "خيار من متعدد مع صورة",
+  },
 }
 
 type Ctx = { lang: Lang; setLang: (l: Lang) => void; dict: Dict; mounted: boolean }

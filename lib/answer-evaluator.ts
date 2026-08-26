@@ -166,6 +166,86 @@ export function extractKeywords(text: string): string[] {
     .slice(0, 5); // Limit to 5 keywords
 }
 
+/**
+ * Evaluates a fill-in-the-blank answer
+ */
+export function evaluateBlankAnswer(userAnswers: string[], correctAnswers: string[]): AnswerEvaluation {
+  if (!userAnswers || !correctAnswers || correctAnswers.length === 0) {
+    return { isCorrect: false, score: 0, matchedKeywords: [], missingKeywords: [], similarity: 0 };
+  }
+
+  let correctCount = 0;
+  const length = Math.min(userAnswers.length, correctAnswers.length);
+  
+  for (let i = 0; i < length; i++) {
+    if (userAnswers[i]?.toLowerCase().trim() === correctAnswers[i]?.toLowerCase().trim()) {
+      correctCount++;
+    }
+  }
+
+  const score = Math.round((correctCount / correctAnswers.length) * 100);
+  return {
+    isCorrect: score === 100,
+    score,
+    matchedKeywords: [],
+    missingKeywords: [],
+    similarity: score / 100
+  };
+}
+
+/**
+ * Evaluates match pairs answer
+ */
+export function evaluateMatchPairs(userPairs: Array<{ left: string; right: string }>, correctPairs: Array<{ left: string; right: string }>): AnswerEvaluation {
+  if (!userPairs || !correctPairs || correctPairs.length === 0) {
+    return { isCorrect: false, score: 0, matchedKeywords: [], missingKeywords: [], similarity: 0 };
+  }
+
+  let correctCount = 0;
+  
+  for (const userPair of userPairs) {
+    const matchingCorrect = correctPairs.find(p => p.left === userPair.left);
+    if (matchingCorrect && matchingCorrect.right === userPair.right) {
+      correctCount++;
+    }
+  }
+
+  const score = Math.round((correctCount / correctPairs.length) * 100);
+  return {
+    isCorrect: score === 100,
+    score,
+    matchedKeywords: [],
+    missingKeywords: [],
+    similarity: score / 100
+  };
+}
+
+/**
+ * Evaluates ordering answer
+ */
+export function evaluateOrdering(userOrder: string[], correctOrder: string[]): AnswerEvaluation {
+  if (!userOrder || !correctOrder || correctOrder.length === 0 || userOrder.length !== correctOrder.length) {
+    return { isCorrect: false, score: 0, matchedKeywords: [], missingKeywords: [], similarity: 0 };
+  }
+
+  let correctCount = 0;
+  for (let i = 0; i < userOrder.length; i++) {
+    if (userOrder[i] === correctOrder[i]) {
+      correctCount++;
+    }
+  }
+
+  const score = Math.round((correctCount / correctOrder.length) * 100);
+  return {
+    isCorrect: score === 100,
+    score,
+    matchedKeywords: [],
+    missingKeywords: [],
+    similarity: score / 100
+  };
+}
+
+
 
 
 

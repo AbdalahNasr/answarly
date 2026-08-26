@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import Reveal from "@/components/reveal"
 import { fetchCategories, fetchCategoriesByParent, createCategory, type Category } from "@/lib/categories"
-import { Search, Plus, X, ChevronRight, ArrowLeft, FolderOpen, Folder } from "lucide-react"
+import { Search, Plus, X, ChevronRight, ArrowLeft, FolderOpen, Folder, Sparkles, Clock, Target, Layers, CheckCircle2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export default function QuizSetupPage() {
   const router = useRouter()
@@ -36,17 +37,19 @@ export default function QuizSetupPage() {
   const [timeLimit, setTimeLimit] = useState<number | null>(null)
   const [availableQuestions, setAvailableQuestions] = useState<number>(0)
   const [checkingQuestions, setCheckingQuestions] = useState<boolean>(false)
-  const [availableTypes, setAvailableTypes] = useState<Array<{type: string, count: number}>>([])
-  const [autoAdjustedType, setAutoAdjustedType] = useState<string | null>(null)
 
   const questionTypes = [
-    { value: "multiple_choice", label: "Multiple Choice" },
-    { value: "true_false", label: "True/False" },
-    { value: "code_snippet", label: "Code Snippet" },
-    { value: "open_ended", label: "Open Ended" }
+    { value: "multiple_choice", label: "Multiple Choice", icon: Layers },
+    { value: "true_false", label: "True/False", icon: Sparkles },
+    { value: "code_snippet", label: "Code Snippet", icon: Plus },
+    { value: "open_ended", label: "Open Ended", icon: Search }
   ]
 
-  const levels = ["easy", "medium", "hard"] as const
+  const levels = [
+    { value: "easy", label: "Easy", color: "bg-green-500" },
+    { value: "medium", label: "Medium", color: "bg-amber-500" },
+    { value: "hard", label: "Hard", color: "bg-rose-500" }
+  ] as const
 
   // Load root categories on component mount
   useEffect(() => {
@@ -284,355 +287,382 @@ export default function QuizSetupPage() {
 
   if (loading) {
     return (
-      <main>
-        <section className="w-full">
-          <div className="container mx-auto px-4 md:px-6 py-16 md:py-20">
-            <div className="text-center">
-              <p className="text-zinc-600 dark:text-zinc-400">Loading quiz setup...</p>
-            </div>
-          </div>
-        </section>
+      <main className="w-full bg-background min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary/30 border-t-primary animate-spin rounded-full" />
+          <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">Initializing Studio...</p>
+        </div>
       </main>
     )
   }
 
   if (error) {
     return (
-      <main>
-        <section className="w-full">
-          <div className="container mx-auto px-4 md:px-6 py-16 md:py-20">
-            <div className="text-center">
-              <p className="text-red-600 dark:text-red-400">{error}</p>
-            </div>
+      <main className="w-full bg-background min-h-screen flex items-center justify-center p-6">
+        <Card className="max-w-md w-full rounded-3xl bg-destructive/5 border border-destructive/20 p-8 text-center space-y-4">
+          <div className="h-16 w-16 bg-destructive/10 rounded-2xl flex items-center justify-center mx-auto">
+            <X className="h-8 w-8 text-destructive" />
           </div>
-        </section>
+          <h2 className="text-xl font-black text-foreground">Setup Failed</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()} className="w-full rounded-xl bg-destructive text-white">Retry Connection</Button>
+        </Card>
       </main>
     )
   }
 
   return (
-    <main>
-      <section className="w-full">
-        <div className="container mx-auto px-4 md:px-6 py-16 md:py-20">
-          <Reveal>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {"Quiz Setup"}
-            </h1>
-            <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              {"Choose your quiz category, question type, difficulty, and number of questions."}
-            </p>
-          </Reveal>
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      {/* HEADER SECTION */}
+      <div className="sticky top-16 z-40 bg-card/60 backdrop-blur-xl border-none px-6 py-8 shadow-2xl">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+              className="h-14 w-14 rounded-2xl bg-background/50 border border-white/5 hover:bg-white/5 transition-all shadow-inner"
+            >
+              <ArrowLeft className="h-6 w-6 text-muted-foreground" />
+            </Button>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tighter flex items-center gap-3 leading-none">
+                <span className="h-10 w-1.5 bg-gradient-to-b from-primary via-secondary to-tertiary rounded-full" />
+                Session Setup
+              </h1>
+              <p className="text-muted-foreground font-medium mt-2 ml-1 uppercase tracking-widest text-[10px]">
+                Configuring Knowledge Synthesis
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 bg-background/50 px-6 py-3 rounded-2xl border border-white/5 shadow-inner">
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Availability</span>
+              <span className={cn("text-xl font-black tracking-tighter", availableQuestions > 0 ? "text-primary" : "text-muted-foreground/30")}>
+                {checkingQuestions ? "..." : availableQuestions} Questions
+              </span>
+            </div>
+            <div className="h-8 w-px bg-white/5" />
+            <Target className={cn("w-6 h-6", availableQuestions > 0 ? "text-primary animate-pulse" : "text-muted-foreground/20")} />
+          </div>
+        </div>
+      </div>
 
-          <div className="mt-8 max-w-2xl">
-            <Card className="relative overflow-hidden rounded-2xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10 shadow-sm">
-              <span className="pointer-events-none absolute -inset-1 opacity-0 sm:opacity-100 bg-gradient-to-br from-fuchsia-500/10 via-indigo-500/10 to-pink-500/10" />
-              <CardHeader className="relative">
-                <CardTitle className="text-xl">{"Configure your quiz"}</CardTitle>
+      <div className="max-w-5xl mx-auto p-6 lg:p-12 space-y-12">
+        
+        {/* CATEGORY ARCHITECTURE CARD */}
+        <Reveal delay={100}>
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-br from-primary/20 to-tertiary/10 rounded-[2.5rem] blur-2xl opacity-50 group-hover:opacity-80 transition duration-1000"></div>
+            <Card className="relative rounded-[2.5rem] bg-card/80 backdrop-blur-xl border border-white/5 shadow-2xl overflow-hidden">
+              <CardHeader className="p-8 pb-4 border-none flex flex-row items-center justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-xl font-black tracking-tight flex items-center gap-3">
+                    <FolderOpen className="h-6 w-6 text-primary" />
+                    Knowledge Domain
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Select the source taxonomy</p>
+                </div>
+                <div className="flex bg-background/50 p-1 rounded-xl border border-white/5">
+                  <button
+                    onClick={() => setCategoryMode("select")}
+                    className={cn(
+                      "px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      categoryMode === "select" ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Browse
+                  </button>
+                  <button
+                    onClick={() => setCategoryMode("custom")}
+                    className={cn(
+                      "px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      categoryMode === "custom" ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Custom
+                  </button>
+                </div>
               </CardHeader>
-              <CardContent className="relative grid gap-5">
-                
-                {/* Category Selection */}
-                <div className="grid gap-2">
-                  <Label className="text-sm">{"Category Selection"}</Label>
-                  
-                  {/* Category Mode Toggle */}
-                  <div className="flex gap-2 mb-3">
-                    <Button
-                      type="button"
-                      variant={categoryMode === "select" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCategoryMode("select")}
-                      className="rounded-full"
-                    >
-                      Select Existing
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={categoryMode === "custom" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCategoryMode("custom")}
-                      className="rounded-full"
-                    >
-                      Write Custom
-                    </Button>
-                  </div>
-
-                  {/* Selected Category Path */}
-                  {categoryMode === "select" && selectedPath.length > 0 && (
-                    <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-lg">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-zinc-600 dark:text-zinc-400">Path:</span>
-                        {selectedPath.map((cat, index) => (
-                          <div key={cat._id} className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedPath(selectedPath.slice(0, index + 1))}
-                              className="h-6 px-2 text-xs"
-                            >
-                              {cat.name}
-                            </Button>
-                            {index < selectedPath.length - 1 && (
-                              <ChevronRight className="h-3 w-3 text-zinc-400" />
-                            )}
-                          </div>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={clearSelection}
-                          className="h-6 px-2 text-xs text-red-500"
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Select Existing Categories */}
-                  {categoryMode === "select" && (
-                    <div className="space-y-3">
-                      {/* Navigation */}
-                      {selectedPath.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={goBackOneLevel}
-                            className="h-8 px-2 text-xs"
-                          >
-                            <ArrowLeft className="h-3 w-3 mr-1" />
-                            Back
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+              
+              <CardContent className="p-8 pt-4">
+                {categoryMode === "select" ? (
+                  <div className="space-y-6">
+                    {/* STUDIO-STYLE DRILL DOWN */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Left: Navigation Path */}
+                      <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground ml-1">Current Path</Label>
+                        <div className="flex flex-col gap-2 p-4 rounded-2xl bg-background/50 border border-white/5 min-h-[200px]">
+                          <button
                             onClick={goToRoot}
-                            className="h-8 px-2 text-xs"
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-xl transition-all",
+                              selectedPath.length === 0 ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5"
+                            )}
                           >
-                            <Folder className="h-3 w-3 mr-1" />
-                            Root
-                          </Button>
+                            <Layers className="w-4 h-4" />
+                            <span className="text-sm font-bold">Root Domain</span>
+                          </button>
+                          {selectedPath.map((cat, i) => (
+                            <div key={cat._id} className="flex flex-col">
+                              <div className="ml-5 h-4 w-px bg-white/10" />
+                              <button
+                                onClick={() => setSelectedPath(selectedPath.slice(0, i + 1))}
+                                className={cn(
+                                  "flex items-center gap-3 p-3 rounded-xl transition-all",
+                                  i === selectedPath.length - 1 ? "bg-secondary/10 text-secondary" : "text-muted-foreground hover:bg-white/5"
+                                )}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                                <span className="text-sm font-bold truncate">{cat.name}</span>
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      )}
-
-                      {/* Search Bar */}
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                        <Input
-                          placeholder="Search categories..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
-                        />
-                        {searchTerm && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSearchTerm("")}
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
                       </div>
 
-                      {/* Current Level Header */}
-                      <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        {getCurrentLevelName()}
-                      </div>
+                      {/* Right: Selection Area */}
+                      <div className="space-y-4">
+                        <div className="relative group">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                          <Input
+                            placeholder="Search concepts..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-12 h-12 rounded-2xl bg-background/50 border-none text-sm placeholder:text-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-primary/30"
+                          />
+                        </div>
 
-                      {/* Categories List */}
-                      <div className="max-h-48 overflow-y-auto border rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                        {selectedPath.length === 0 ? (
-                          // Root categories
-                          <>
-                            <div className="p-2 text-xs text-zinc-500 border-b">Main Categories</div>
-                            {filteredRootCategories.length === 0 ? (
-                              <div className="p-4 text-center text-zinc-500">
-                                No categories found
-                              </div>
-                            ) : (
-                              filteredRootCategories.map((cat) => (
-                                <Button
-                                  key={cat._id}
-                                  variant="ghost"
-                                  className="w-full justify-start h-auto p-3 rounded-none border-b last:border-b-0 hover:bg-zinc-50 dark:hover:bg-white/5"
-                                  onClick={() => handleCategorySelect(cat)}
-                                >
-                                  <FolderOpen className="h-4 w-4 mr-2 text-zinc-400" />
-                                  <div className="text-left">
-                                    <div className="font-medium">{cat.name}</div>
-                                    {cat.description && (
-                                      <div className="text-xs text-zinc-500">{cat.description}</div>
-                                    )}
-                                  </div>
-                                </Button>
-                              ))
-                            )}
-                          </>
-                        ) : (
-                          // Subcategories or General option
-                          <>
-                            <div className="p-2 text-xs text-zinc-500 border-b">Choose an option</div>
-                            
-                            {/* General Option */}
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start h-auto p-3 rounded-none border-b hover:bg-zinc-50 dark:hover:bg-white/5"
+                        <div className="grid gap-2 max-h-[240px] overflow-y-auto custom-scrollbar pr-2">
+                          {selectedPath.length > 0 && (
+                            <button
                               onClick={handleGeneralSelect}
+                              className="flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all group"
                             >
-                              <Folder className="h-4 w-4 mr-2 text-zinc-400" />
-                              <div className="text-left">
-                                <div className="font-medium">General</div>
-                                <div className="text-xs text-zinc-500">All questions from this category</div>
+                              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <CheckCircle2 className="h-5 w-5 text-primary" />
                               </div>
-                            </Button>
-
-                            {/* Specific Subcategories */}
-                            {filteredCurrentCategories.length > 0 && (
-                              <>
-                                <div className="p-2 text-xs text-zinc-500 border-b bg-zinc-50 dark:bg-white/5">
-                                  Specific Subcategories
-                                </div>
-                                {filteredCurrentCategories.map((cat) => (
-                                  <Button
-                                    key={cat._id}
-                                    variant="ghost"
-                                    className="w-full justify-start h-auto p-3 rounded-none border-b last:border-b-0 hover:bg-zinc-50 dark:hover:bg-white/5"
-                                    onClick={() => handleCategorySelect(cat)}
-                                  >
-                                    <FolderOpen className="h-4 w-4 mr-2 text-zinc-400" />
-                                    <div className="text-left">
-                                      <div className="font-medium">{cat.name}</div>
-                                      {cat.description && (
-                                        <div className="text-xs text-zinc-500">{cat.description}</div>
-                                      )}
-                                    </div>
-                                  </Button>
-                                ))}
-                              </>
-                            )}
-                          </>
-                        )}
+                              <div className="text-left">
+                                <p className="text-sm font-black text-foreground">Select Current</p>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Use everything in this folder</p>
+                              </div>
+                            </button>
+                          )}
+                          
+                          {(selectedPath.length === 0 ? filteredRootCategories : filteredCurrentCategories).map((cat) => (
+                            <button
+                              key={cat._id}
+                              onClick={() => handleCategorySelect(cat)}
+                              className="flex items-center gap-4 p-4 rounded-2xl bg-background/40 hover:bg-white/5 transition-all border border-white/5 group"
+                            >
+                              <div className="h-10 w-10 rounded-xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Folder className="h-5 w-5 text-secondary" />
+                              </div>
+                              <div className="flex-1 text-left min-w-0">
+                                <p className="text-sm font-black text-foreground truncate">{cat.name}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Enter Domain</p>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )}
-
-                  {/* Custom Category Input */}
-                  {categoryMode === "custom" && (
-                    <div className="space-y-2">
-                      <Textarea
-                        placeholder="Enter your custom category (e.g., 'JavaScript Arrays', 'React Hooks', 'CSS Grid')"
+                  </div>
+                ) : (
+                  <div className="space-y-6 max-w-2xl mx-auto py-10">
+                    <div className="space-y-3">
+                      <Label className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground ml-1">Custom Subject Identity</Label>
+                      <Input
+                        placeholder="e.g. Quantum Electrodynamics"
                         value={customCategory}
                         onChange={(e) => setCustomCategory(e.target.value)}
-                        className="min-h-[80px] rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                        className="h-16 rounded-2xl bg-background border-none focus-visible:ring-2 focus-visible:ring-primary/40 text-xl font-bold px-8 shadow-inner"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addCustomCategory}
-                        className="rounded-full"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Use Custom Category
-                      </Button>
                     </div>
-                  )}
-                </div>
-
-                {/* Quiz Configuration */}
-                <div className="grid gap-4">
-                <div className="grid gap-2">
-                    <Label className="text-sm">{"Question Type"}</Label>
-                    <Select value={questionType} onValueChange={setQuestionType}>
-                    <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {questionTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label className="text-sm">{"Difficulty Level"}</Label>
-                    <Select value={level} onValueChange={setLevel}>
-                    <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {levels.map((l) => (
-                        <SelectItem key={l} value={l}>
-                            {l.charAt(0).toUpperCase() + l.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label className="text-sm">{"Number of Questions"}</Label>
-                  <Input
-                    type="number"
-                      min="1"
-                      max="50"
-                    value={count}
-                      onChange={handleCountChange}
-                    className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
-                  />
-                  {checkingQuestions && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Checking available questions...
-                    </p>
-                  )}
-                  {!checkingQuestions && availableQuestions > 0 && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Available questions: {availableQuestions}
-                    </p>
-                  )}
-                  {!checkingQuestions && availableQuestions === 0 && (
-                    <p className="text-xs text-red-500 dark:text-red-400">
-                      No questions found for this combination. Please choose a different category or difficulty.
-                    </p>
-                  )}
+                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-4">
+                      <Sparkles className="w-5 h-5 text-primary mt-1" />
+                      <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                        The AI will synthesize a custom curriculum based on this unique subject. 
+                        Accuracy depends on the specificity of the title.
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="grid gap-2">
-                    <Label className="text-sm">{"Time Limit (minutes) - Optional"}</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="180"
-                      placeholder="Leave empty for no time limit"
-                      value={timeLimit || ""}
-                      onChange={handleTimeLimitChange}
-                      className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
-                    />
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Set a time limit for the quiz (1-180 minutes). Leave empty for unlimited time.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Start Button */}
-                  <Button
-                    onClick={start}
-                  className="w-full rounded-full text-white bg-gradient-to-r from-fuchsia-600 via-indigo-600 to-pink-600 hover:from-fuchsia-500 hover:via-indigo-500 hover:to-pink-500"
-                  >
-                  Start Quiz
-                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
+        </Reveal>
+
+        {/* LOGICAL CONFIGURATION GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          {/* SETTINGS COLUMN */}
+          <Reveal delay={200} className="lg:col-span-7 space-y-10">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-secondary/20 to-transparent rounded-[2.5rem] blur opacity-50"></div>
+              <Card className="relative rounded-[2.5rem] bg-card/80 backdrop-blur-xl border border-white/5 p-8 lg:p-10 shadow-2xl space-y-10">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black tracking-tight text-foreground flex items-center gap-3 uppercase tracking-widest">
+                    Synthesizer Config
+                  </h3>
+                  <div className="h-0.5 w-12 bg-secondary rounded-full" />
+                </div>
+
+                {/* TYPE SELECTOR */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground ml-1">Modal Interaction Type</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {questionTypes.map((t) => (
+                      <button
+                        key={t.value}
+                        onClick={() => setQuestionType(t.value)}
+                        className={cn(
+                          "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
+                          questionType === t.value 
+                            ? "bg-secondary/10 border-secondary shadow-[0_0_20px_rgba(99,102,241,0.1)] scale-[1.05]" 
+                            : "bg-background/40 border-white/5 hover:border-white/20"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                          questionType === t.value ? "bg-secondary text-white" : "bg-background text-muted-foreground"
+                        )}>
+                          <t.icon className="w-5 h-5" />
+                        </div>
+                        <span className={cn(
+                          "text-[9px] font-black uppercase tracking-widest text-center leading-tight",
+                          questionType === t.value ? "text-foreground" : "text-muted-foreground"
+                        )}>
+                          {t.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* DIFFICULTY & TIME LIMIT */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground ml-1">Challenge Level</Label>
+                    <div className="grid grid-cols-3 gap-2 p-1.5 bg-background/50 rounded-2xl border border-white/5">
+                      {levels.map((l) => (
+                        <button
+                          key={l.value}
+                          onClick={() => setLevel(l.value)}
+                          className={cn(
+                            "py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                            level === l.value 
+                              ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {l.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between ml-1">
+                      <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">Temporal Constraint</Label>
+                      <span className="text-[9px] font-mono text-muted-foreground/50">{timeLimit ? `${timeLimit} min` : "Infinite"}</span>
+                    </div>
+                    <div className="relative group/time">
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within/time:text-primary transition-colors" />
+                      <Input
+                        type="number"
+                        placeholder="Unbounded"
+                        value={timeLimit || ""}
+                        onChange={handleTimeLimitChange}
+                        className="pl-12 h-14 rounded-2xl bg-background/50 border-none text-sm font-bold focus-visible:ring-1 focus-visible:ring-primary/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </Reveal>
+
+          {/* QUANTITY COLUMN */}
+          <Reveal delay={300} className="lg:col-span-5">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-tertiary/20 to-transparent rounded-[2.5rem] blur opacity-50"></div>
+              <Card className="relative rounded-[2.5rem] bg-card/80 backdrop-blur-xl border border-white/5 p-8 lg:p-10 shadow-2xl flex flex-col items-center text-center space-y-8">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black tracking-tight text-foreground uppercase tracking-widest">
+                    Knowledge Volume
+                  </h3>
+                  <div className="h-0.5 w-12 bg-tertiary rounded-full mx-auto" />
+                </div>
+
+                {/* QUANTITY SELECTOR */}
+                <div className="w-full space-y-8">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute inset-0 bg-tertiary/5 rounded-full blur-3xl" />
+                    <div className="relative h-40 w-40 rounded-full border-4 border-white/5 flex flex-col items-center justify-center bg-background/50 shadow-2xl">
+                      <span className="text-6xl font-black tracking-tighter text-foreground leading-none">{count}</span>
+                      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground mt-2">Units</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <input
+                        type="range"
+                        min="1"
+                        max={availableQuestions > 0 ? Math.min(50, availableQuestions) : 50}
+                        value={count}
+                        onChange={(e) => setCount(Number(e.target.value))}
+                        className="w-full h-1.5 bg-background rounded-full appearance-none cursor-pointer accent-tertiary"
+                      />
+                      <div className="flex justify-between px-1">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">1 Unit</span>
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">{availableQuestions > 0 ? Math.min(50, availableQuestions) : 50} Max</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-background/50 border border-white/5 flex items-center justify-between">
+                      <div className="text-left">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Session Duration</p>
+                        <p className="text-xs font-bold text-foreground">Est. {count * 2} - {count * 4} minutes</p>
+                      </div>
+                      <div className="h-10 w-10 rounded-xl bg-tertiary/10 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-tertiary" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </Reveal>
         </div>
-      </section>
-    </main>
+
+        {/* FINAL ACTION */}
+        <Reveal delay={400}>
+          <div className="relative group pt-10">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary via-secondary to-tertiary rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-700"></div>
+            <Button
+              onClick={start}
+              disabled={(!customCategory.trim() && selectedPath.length === 0) || availableQuestions === 0}
+              className={cn(
+                "w-full h-20 rounded-3xl text-2xl font-black uppercase tracking-[0.2em] transition-all duration-500",
+                availableQuestions > 0 
+                  ? "bg-gradient-to-r from-primary via-secondary to-tertiary text-white shadow-2xl shadow-primary/20 hover:scale-[1.02] hover:shadow-primary/40" 
+                  : "bg-muted-foreground/10 text-muted-foreground cursor-not-allowed border border-white/5"
+              )}
+            >
+              Initialize Synthesis
+            </Button>
+            {availableQuestions === 0 && (selectedPath.length > 0 || customCategory.trim()) && !checkingQuestions && (
+              <p className="text-center mt-4 text-xs font-bold text-rose-500 uppercase tracking-widest animate-bounce">
+                Insufficient data in selected domain
+              </p>
+            )}
+          </div>
+        </Reveal>
+      </div>
+    </div>
   )
 }

@@ -113,6 +113,13 @@
 
 ## 🔧 Technical Improvements
 
+### Technical Guidelines
+- [x] **Project tech guidelines documented** → See [`docs/TECH_GUIDELINES.md`](docs/TECH_GUIDELINES.md)
+  - [x] UI stack: shadcn/ui + Magic UI + Aceternity UI + Framer Motion
+  - [x] Media: Cloudinary only (no local filesystem)
+  - [x] AI: Client-side or Edge streaming (Vercel timeout)
+  - [x] Banned: MUI, Chakra, Ant Design
+
 ### Performance & Scalability
 - [ ] **Caching system**
   - [ ] Redis caching for frequently accessed data
