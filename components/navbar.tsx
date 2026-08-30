@@ -42,55 +42,9 @@ export default function Navbar() {
     const loadUserData = () => {
       try {
         const raw = localStorage.getItem('answerly-user')
-        const token = localStorage.getItem('answerly-token')
-
-        // #region agent log
-        fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Debug-Session-Id': '22bd0e',
-          },
-          body: JSON.stringify({
-            sessionId: '22bd0e',
-            runId: 'initial',
-            hypothesisId: 'H2',
-            location: 'components/navbar.tsx:43',
-            message: 'Navbar loaded user and token from localStorage',
-            data: {
-              hasUserRaw: !!raw,
-              hasToken: !!token,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => { })
-        // #endregion agent log
 
         if (raw) {
           const userData = JSON.parse(raw)
-          
-          // #region agent log
-          fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Debug-Session-Id': '22bd0e',
-            },
-            body: JSON.stringify({
-              sessionId: '22bd0e',
-              runId: 'initial',
-              hypothesisId: 'H2',
-              location: 'components/navbar.tsx:54',
-              message: 'Navbar parsed user data from localStorage',
-              data: {
-                userId: userData.id || userData._id,
-                provider: userData.provider,
-              },
-              timestamp: Date.now(),
-            }),
-          }).catch(() => { })
-          // #endregion agent log
-
           setUser(userData)
         } else {
           setUser(null)

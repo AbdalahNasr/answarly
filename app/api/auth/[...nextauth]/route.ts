@@ -118,30 +118,6 @@ export const authOptions: AuthOptions = {
                     console.log(`[social-auth] ✅ Existing user signed in via ${provider}: ${email}`);
                 }
 
-                // #region agent log
-                fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Debug-Session-Id': '22bd0e',
-                    },
-                    body: JSON.stringify({
-                        sessionId: '22bd0e',
-                        runId: 'initial',
-                        hypothesisId: 'H3',
-                        location: 'app/api/auth/[...nextauth]/route.ts:114',
-                        message: 'NextAuth signIn callback completed for social login',
-                        data: {
-                            provider,
-                            email,
-                            hasDbUser: !!dbUser,
-                            dbUserId: dbUser?._id?.toString(),
-                        },
-                        timestamp: Date.now(),
-                    }),
-                }).catch(() => { })
-                // #endregion agent log
-
                 return true;
             } catch (error: any) {
                 console.error("[social-auth] ❌ Error:", error.message || error);
@@ -167,30 +143,6 @@ export const authOptions: AuthOptions = {
                         token.avatarUrl = dbUser.avatarUrl;
                         token.provider = dbUser.provider;
                     }
-
-                    // #region agent log
-                    fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Debug-Session-Id': '22bd0e',
-                        },
-                        body: JSON.stringify({
-                            sessionId: '22bd0e',
-                            runId: 'initial',
-                            hypothesisId: 'H4',
-                            location: 'app/api/auth/[...nextauth]/route.ts:132',
-                            message: 'NextAuth jwt callback populated token from dbUser',
-                            data: {
-                                hasDbUser: !!dbUser,
-                                tokenId: token.id,
-                                username: token.username,
-                                provider: token.provider,
-                            },
-                            timestamp: Date.now(),
-                        }),
-                    }).catch(() => { })
-                    // #endregion agent log
                 } catch (err) {
                     console.error("[social-auth] JWT callback error:", err);
                 }
@@ -206,30 +158,6 @@ export const authOptions: AuthOptions = {
                 (session.user as any).avatarUrl = token.avatarUrl;
                 (session.user as any).provider = token.provider;
             }
-
-            // #region agent log
-            fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Debug-Session-Id': '22bd0e',
-                },
-                body: JSON.stringify({
-                    sessionId: '22bd0e',
-                    runId: 'initial',
-                    hypothesisId: 'H5',
-                    location: 'app/api/auth/[...nextauth]/route.ts:145',
-                    message: 'NextAuth session callback returning session to client',
-                    data: {
-                        hasSessionUser: !!session.user,
-                        userId: (session.user as any)?.id,
-                        username: (session.user as any)?.username,
-                        provider: (session.user as any)?.provider,
-                    },
-                    timestamp: Date.now(),
-                }),
-            }).catch(() => { })
-            // #endregion agent log
 
             return session;
         },

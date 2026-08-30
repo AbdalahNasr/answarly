@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
-import type { Difficulty, QuestionType } from "@/lib/questions"
+import type { Difficulty, QuestionType, VisualDiagramData, VideoQuestionData } from "@/lib/questions"
 import { addQuestion } from "@/lib/questions"
 import { ensureCategory /* keep existing helper */ } from "@/lib/categories"
 import { ensureSubcategory } from "@/lib/subcategories"
@@ -36,8 +36,13 @@ import {
   AlignJustify,
   Calculator,
   BarChart,
-  Image as ImageIcon,
-  Code2
+  Image as ImageIcon, 
+  Code2, 
+  Workflow,
+  ExternalLink,
+  Pencil,
+  Trash2,
+  Video
 } from "lucide-react"
 import { STITCH_OPTIONS, generateStitchQuestion } from "@/lib/stitch-engine"
 import { useRouter } from "next/navigation"
@@ -87,6 +92,8 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
   const [orderItems, setOrderItems] = useState<string[]>(["", "", ""])
   const [latex, setLatex] = useState("")
   const [diagramLabels, setDiagramLabels] = useState<Array<{ x: number; y: number; label: string }>>([])
+  const [drawioStudioData, setDrawioStudioData] = useState<VisualDiagramData | undefined>(undefined)
+  const [videoQuestionData, setVideoQuestionData] = useState<VideoQuestionData | undefined>(undefined)
 
   // Update state when stitch data changes
   useEffect(() => {
@@ -103,6 +110,47 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
       })
     }
   }, [initialStitchData, toast, stitchId])
+
+  // Pick up a diagram handed back from the full-page Draw.io Studio
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const raw = window.sessionStorage.getItem("answerly-drawio-studio-diagram")
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw)
+      setDrawioStudioData(parsed)
+      setType("drawio_studio")
+      toast({ title: "Diagram ready", description: "Your Draw.io Studio diagram was added to this question." })
+    } catch {
+      // Ignore malformed or stale payloads
+    } finally {
+      window.sessionStorage.removeItem("answerly-drawio-studio-diagram")
+    }
+  }, [toast])
+
+  // Pick up media handed back from the full-page Video Question editor
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const raw = window.sessionStorage.getItem("answerly-video-question-data")
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw)
+      setVideoQuestionData(parsed)
+      setType("video")
+      toast({ title: "Video ready", description: "Your video question media was added to this question." })
+    } catch {
+      // Ignore malformed or stale payloads
+    } finally {
+      window.sessionStorage.removeItem("answerly-video-question-data")
+    }
+  }, [toast])
+
+  // Prefetch the heavier studio routes as soon as the user shows intent,
+  // so the redirect feels instant instead of waiting on a cold route load.
+  useEffect(() => {
+    if (type === "drawio_studio") router.prefetch("/drawio-studio")
+    if (type === "video") router.prefetch("/video-question")
+  }, [type, router])
 
   // Media and metadata state
   const [heading, setHeading] = useState("")
@@ -271,8 +319,20 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
     if (type === "graph_chart") return media.length > 0 && !!answer.trim()
     if (type === "diagram_label") return media.length > 0 && diagramLabels.length > 0 && diagramLabels.every(l => l.label.trim())
     if (type === "image_mcq") return media.length > 0 && mcqValidOptions.length >= 2 && !!answer.trim()
+    if (type === "drawio_studio") return true
+    if (type === "video") return !!videoQuestionData?.videoUrl
     return true
-  }, [question, categoryMode, selectedRootCategory, customRootCategory, type, mcqValidOptions, answer, code, audioUrl, listeningAnswerFormat, blankTemplate, blankAnswers, matchPairs, orderItems, latex, media, diagramLabels])
+  }, [question, categoryMode, selectedRootCategory, customRootCategory, type, mcqValidOptions, answer, code, audioUrl, listeningAnswerFormat, blankTemplate, blankAnswers, matchPairs, orderItems, latex, media, diagramLabels, drawioStudioData, videoQuestionData])
+
+  const openDrawioStudio = () => {
+    const returnTo = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/qa"
+    router.push(`/drawio-studio?returnTo=${encodeURIComponent(returnTo)}`)
+  }
+
+  const openVideoQuestionStudio = () => {
+    const returnTo = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/qa"
+    router.push(`/video-question?returnTo=${encodeURIComponent(returnTo)}`)
+  }
 
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -392,7 +452,9 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
           matchPairs: type === "match_pairs" ? matchPairs : undefined,
           orderItems: type === "ordering" ? orderItems : undefined,
           latex: type === "math_equation" ? latex : undefined,
-          diagramLabels: type === "diagram_label" ? diagramLabels : undefined
+          diagramLabels: type === "diagram_label" ? diagramLabels : undefined,
+          drawioStudioData: type === "drawio_studio" ? drawioStudioData : undefined,
+          videoQuestionData: type === "video" ? videoQuestionData : undefined
         })
 
         // Reset form
@@ -427,6 +489,8 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
         setOrderItems(["", "", ""])
         setLatex("")
         setDiagramLabels([])
+        setDrawioStudioData(undefined)
+        setVideoQuestionData(undefined)
         
         toast({ title: 'Success', description: 'Question created successfully!' })
         onAdded?.()
@@ -498,11 +562,17 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
                   { id: "graph_chart", label: "Graph / Chart", icon: BarChart },
                   { id: "diagram_label", label: "Diagram Label", icon: Layers },
                   { id: "image_mcq", label: "Image MCQ", icon: ImageIcon },
+                  { id: "drawio_studio", label: "Draw.io Studio", icon: Workflow },
+                  { id: "video", label: "Video", icon: Video },
                 ].map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setType(t.id as QuestionType)}
+                    onMouseEnter={() => {
+                      if (t.id === "drawio_studio") router.prefetch("/drawio-studio")
+                      if (t.id === "video") router.prefetch("/video-question")
+                    }}
                     className={cn(
                       "flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all duration-300 group",
                       type === t.id 
@@ -1220,6 +1290,140 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
                           ))}
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {type === "drawio_studio" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                      <div className="flex items-center justify-between ml-1">
+                        <Label className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground">
+                          Canvas Studio
+                        </Label>
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10">
+                          <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">
+                            Tldraw · Full Studio
+                          </span>
+                        </div>
+                      </div>
+
+                      {drawioStudioData ? (
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-br from-fuchsia-500/20 via-violet-500/15 to-indigo-500/20 rounded-[28px] blur opacity-40 group-hover:opacity-60 transition duration-1000" />
+                          <div className="relative p-6 rounded-[24px] border border-emerald-500/20 bg-emerald-500/5 flex flex-col sm:flex-row sm:items-center gap-4">
+                            <div className="h-11 w-11 shrink-0 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <p className="text-sm font-bold text-foreground">Diagram ready</p>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                Your Draw.io Studio diagram will be attached to this question.
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={openDrawioStudio} className="gap-2">
+                                <Pencil className="h-3.5 w-3.5" /> Edit
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setDrawioStudioData(undefined)} className="gap-2 text-destructive hover:text-destructive">
+                                <Trash2 className="h-3.5 w-3.5" /> Remove
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-br from-fuchsia-500/20 via-violet-500/15 to-indigo-500/20 rounded-[28px] blur opacity-40 group-hover:opacity-60 transition duration-1000" />
+                          <button
+                            type="button"
+                            onClick={openDrawioStudio}
+                            className="relative w-full flex flex-col items-center justify-center gap-4 rounded-[24px] border border-dashed border-violet-500/30 bg-[#0d1220] px-6 py-16 text-center transition hover:border-violet-400/50 hover:bg-[#0f1526]"
+                          >
+                            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-fuchsia-600 to-violet-600 flex items-center justify-center shadow-[0_0_24px_rgba(168,85,247,0.35)]">
+                              <Workflow className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-foreground">Open Draw.io Studio</p>
+                              <p className="text-[11px] text-muted-foreground max-w-xs">
+                                Design your flowchart, diagram, or table in the full studio, then bring it back here.
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_18px_rgba(168,85,247,0.3)]">
+                              <ExternalLink className="h-4 w-4" /> Launch Studio
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {type === "video" && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                      <div className="flex items-center justify-between ml-1">
+                        <Label className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground">
+                          Video Lesson
+                        </Label>
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10">
+                          <Video className="h-3.5 w-3.5 text-violet-400" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">
+                            Type 14
+                          </span>
+                        </div>
+                      </div>
+
+                      {videoQuestionData?.videoUrl ? (
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-br from-fuchsia-500/20 via-violet-500/15 to-indigo-500/20 rounded-[28px] blur opacity-40 group-hover:opacity-60 transition duration-1000" />
+                          <div className="relative p-6 rounded-[24px] border border-emerald-500/20 bg-emerald-500/5 flex flex-col sm:flex-row sm:items-center gap-4">
+                            {videoQuestionData.coverUrl ? (
+                              <img
+                                src={videoQuestionData.coverUrl}
+                                alt="Video cover"
+                                className="h-16 w-24 shrink-0 rounded-xl object-cover border border-white/10"
+                              />
+                            ) : (
+                              <div className="h-16 w-24 shrink-0 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                              </div>
+                            )}
+                            <div className="flex-1 space-y-1 min-w-0">
+                              <p className="text-sm font-bold text-foreground truncate">{videoQuestionData.videoName || "Video ready"}</p>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                Your video and cover image will be attached to this question.
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={openVideoQuestionStudio} className="gap-2">
+                                <Pencil className="h-3.5 w-3.5" /> Edit
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setVideoQuestionData(undefined)} className="gap-2 text-destructive hover:text-destructive">
+                                <Trash2 className="h-3.5 w-3.5" /> Remove
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-br from-fuchsia-500/20 via-violet-500/15 to-indigo-500/20 rounded-[28px] blur opacity-40 group-hover:opacity-60 transition duration-1000" />
+                          <button
+                            type="button"
+                            onClick={openVideoQuestionStudio}
+                            className="relative w-full flex flex-col items-center justify-center gap-4 rounded-[24px] border border-dashed border-violet-500/30 bg-[#0d1220] px-6 py-16 text-center transition hover:border-violet-400/50 hover:bg-[#0f1526]"
+                          >
+                            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-fuchsia-600 to-violet-600 flex items-center justify-center shadow-[0_0_24px_rgba(168,85,247,0.35)]">
+                              <Video className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-foreground">Open Video Editor</p>
+                              <p className="text-[11px] text-muted-foreground max-w-xs">
+                                Upload or record a lesson video and choose a cover image, then bring it back here.
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_18px_rgba(168,85,247,0.3)]">
+                              <ExternalLink className="h-4 w-4" /> Launch Video Editor
+                            </span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

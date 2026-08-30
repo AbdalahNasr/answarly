@@ -26,31 +26,6 @@ function AuthSync() {
                     provider: user.provider,
                 }
 
-                // #region agent log
-                fetch('http://127.0.0.1:7570/ingest/47b9bb0c-6016-443f-8eca-3696a6922ece', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Debug-Session-Id': '22bd0e',
-                    },
-                    body: JSON.stringify({
-                        sessionId: '22bd0e',
-                        runId: 'initial',
-                        hypothesisId: 'H1',
-                        location: 'components/auth-provider.tsx:20',
-                        message: 'AuthSync syncing social login user to localStorage',
-                        data: {
-                            status,
-                            hasSessionUser: !!session?.user,
-                            userId: user.id,
-                            email: user.email,
-                            provider: user.provider,
-                        },
-                        timestamp: Date.now(),
-                    }),
-                }).catch(() => { })
-                // #endregion agent log
-
                 localStorage.setItem("answerly-user", JSON.stringify(userData))
 
                 // Generate and store JWT token for social login users

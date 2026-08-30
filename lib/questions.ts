@@ -1,5 +1,42 @@
 // lib/questions.ts
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'beginner' | 'intermediate' | 'advanced'
+export type VisualDiagramMode = 'flowchart' | 'mind_map' | 'table'
+
+export interface VisualDiagramNode {
+	id: string
+	label: string
+	x: number
+	y: number
+	kind?: string
+}
+
+export interface VisualDiagramEdge {
+	id: string
+	from: string
+	to: string
+	kind?: string
+}
+
+export interface VisualDiagramData {
+	mode: VisualDiagramMode
+	nodes: VisualDiagramNode[]
+	edges: VisualDiagramEdge[]
+	tableData?: string[][]
+	rows?: number
+	columns?: number
+	tldrawSnapshot?: any
+	persistenceKey?: string
+}
+
+export interface VideoQuestionData {
+	videoUrl?: string
+	videoName?: string
+	coverUrl?: string
+	coverName?: string
+	title?: string
+	instructions?: string
+}
+
 export type QuestionType = 
 	| 'multiple_choice'
 	| 'true_false'
@@ -13,6 +50,8 @@ export type QuestionType =
 	| 'graph_chart'
 	| 'diagram_label'
 	| 'image_mcq'
+	| 'drawio_studio'
+	| 'video'
 
 export interface MatchPair {
 	id: string
@@ -60,6 +99,8 @@ export type Question = {
 	orderItems?: string[]
 	latex?: string
 	diagramLabels?: Array<{ x: number; y: number; label: string }>
+	drawioStudioData?: VisualDiagramData
+	videoQuestionData?: VideoQuestionData
 	requiresTranslation?: boolean
 	starterCode?: string
 	expectedOutput?: string

@@ -13,6 +13,8 @@ export type CreateQuestionPayload = {
     | 'graph_chart'
     | 'diagram_label'
     | 'image_mcq'
+    | 'drawio_studio'
+    | 'video'
   options?: string[]
   correctAnswer?: string
   keywords?: string[]
@@ -28,6 +30,24 @@ export type CreateQuestionPayload = {
   orderItems?: string[]
   latex?: string
   diagramLabels?: Array<{ x: number; y: number; label: string }>
+  drawioStudioData?: unknown
+  videoQuestionData?: {
+    videoUrl?: string
+    videoName?: string
+    coverUrl?: string
+    coverName?: string
+    title?: string
+    instructions?: string
+  }
+  heading?: string
+  description?: string
+  media?: any[]
+  contentLayout?: {
+    showHeading: boolean
+    showDescription: boolean
+    headingPosition: "before" | "after"
+    descriptionPosition: "before" | "after"
+  }
 }
 
 export async function createQuestionApi(payload: CreateQuestionPayload) {
