@@ -16,6 +16,16 @@ import { ClientOnly } from "@/components/ui/client-only"
 import Link from "next/link"
 import ReactBitsGalaxy from "@/components/ui/react-bits-galaxy"
 import { signIn } from "next-auth/react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function LoginPage() {
   const { dict, lang } = useI18n()
@@ -26,6 +36,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [showNoAccountDialog, setShowNoAccountDialog] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState("")
 
   useEffect(() => {
     const loadFromStorage = () => {
@@ -65,6 +77,16 @@ export default function LoginPage() {
       const data = await res.json()
       if (!res.ok) {
         const msg = data?.error || data?.message || 'Login failed'
+        const normalized = String(msg || '').toLowerCase()
+        const noAccount = normalized.includes('user not found') || normalized.includes('no account') || normalized.includes('email not found') || normalized.includes('not found')
+
+        if (noAccount) {
+          setPendingEmail(email.trim())
+          setShowNoAccountDialog(true)
+          setMessage(msg)
+          return
+        }
+
         toast({ title: 'Sign in failed', description: msg, variant: 'destructive' })
         setMessage(msg)
         return
@@ -138,6 +160,49 @@ export default function LoginPage() {
 
       {/* Content */}
       <section className="relative z-10 w-full flex items-center justify-center h-full px-4">
+        <AlertDialog open={showNoAccountDialog} onOpenChange={setShowNoAccountDialog}>
+          <AlertDialogContent className="bg-[#111223] border-[#464658]/30 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">No account found</AlertDialogTitle>
+              <AlertDialogDescription className="text-[#aaa9be]">
+                We couldn't find an account for <span className="font-medium text-white">{pendingEmail || email}</span>.
+                Would you like to create one now?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-2">
+              <AlertDialogCancel
+                className="bg-[#1d1e32] text-[#e7e6fc] border-none hover:bg-[#23253d]"
+                onClick={() => setPendingEmail("")}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <Button
+                variant="outline"
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+                onClick={() => {
+                  setShowNoAccountDialog(false)
+                  setPendingEmail("")
+                  router.back()
+                }}
+              >
+                Back
+              </Button>
+              <AlertDialogAction asChild>
+                <Link
+                  href={pendingEmail ? `/signup?email=${encodeURIComponent(pendingEmail)}` : "/signup"}
+                  className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-fuchsia-500/80 via-indigo-500/80 to-pink-500/80 px-4 py-2 text-sm font-medium text-white hover:from-fuchsia-600/90 hover:via-indigo-600/90 hover:to-pink-600/90"
+                  onClick={() => {
+                    setShowNoAccountDialog(false)
+                    setPendingEmail("")
+                  }}
+                >
+                  Create account
+                </Link>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <div className="w-full max-w-md mx-auto">
           <Card className="relative overflow-hidden rounded-2xl bg-white/10 dark:bg-black/20 border-white/30 dark:border-white/20 shadow-2xl backdrop-blur-md">
             <span className="pointer-events-none absolute -inset-1 opacity-0 sm:opacity-100 bg-gradient-to-br from-fuchsia-500/10 via-indigo-500/10 to-pink-500/10" />

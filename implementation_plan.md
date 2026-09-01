@@ -1,3 +1,63 @@
+# Answerly — Cleanup & Refactor Plan (new-version branch)
+
+Goal: reduce spaghetti risk before adding more question types, without breaking the studio/canvas features. Ordered by priority — do top to bottom, each item is independently shippable.
+
+## Design Rule (non-negotiable)
+- Do not break the current UI or visual identity.
+- Keep the current design language, layout rhythm, spacing, glassmorphism styling, color palette, typography, and component behavior intact.
+- Refactors must be additive and backward-compatible; they should improve structure without changing the way the app already looks and feels.
+- If a cleanup task or new feature requires a visual change, it must stay within the existing design system and should be treated as a separate, approved UI pass.
+- The current app design is the baseline; all technical work must preserve it.
+
+---
+
+## 1. Dead dependency removal (zero risk, do first)
+- Remove `sequelize`, `sequelize-cli`, `pg`, `pg-hstore` from `package.json` — no usages found anywhere in `app/`, `lib/`, `server/`. Confirmed dead. (Postgres migration is a future project — see item 6 — re-add properly when that actually starts, don't keep unused scaffolding around in the meantime.)
+- Remove `bcryptjs` — only `bcrypt` is imported anywhere (`server/services/auth.service.ts`, `passwordReset.service.ts`, `user.filesystem.service.ts`). `bcrypt` + `SALT_ROUNDS = 10` is correct as-is, no change needed there.
+- Delete `controllers/feedbackController.ts`, `routes/feedbackRoutes.ts`, `services/feedbackService.ts` — all three are 0 bytes, unused Express-style scaffolding left over from before the app settled on Next.js API routes. Delete the three empty folders too if nothing else lives in them.
+- Run `npm prune` / reinstall after trimming `package.json` and confirm `npm run build` still passes.
+
+## 2. Question schema — introduce type discriminators
+
+Current state: one flat `question.model.ts` with every type's fields (`blankTemplate`, `matchPairs`, `orderItems`, `latex`, `diagramLabels`, ...) sitting optionally on every document. Model currently lists 12 types but you're at 14 in practice — schema is already behind. This is the main thing that gets worse with every new type if left as-is.
+
+- Define a lean base schema: `text`, `category`, `difficulty`, `media`, `contentLayout`, `createdBy`, timestamps — fields every question type actually needs.
+- Convert type-specific fields into Mongoose discriminators, one per question type (or grouped by family — see item 3). Each discriminator only carries its own fields; no more optional soup on unrelated types.
+- Migrate existing documents: write a one-off script to tag existing docs with their discriminator key so nothing already in Mongo breaks.
+- Update `lib/questions.ts` and any direct `Question.find/create` calls to use the discriminator model per type instead of the flat model.
+
+## 3. Group question types into families (do this before/alongside #2)
+
+You mentioned new types are UI-level extensions of existing types (video, studio/diagram shapes based on subject) rather than fully new data shapes. Before writing 14+ discriminators, map which types actually share a data shape vs. which only differ in rendering:
+
+- List all 14 current types + planned kid-focused types, and for each note: (a) what data it stores, (b) what UI renders it.
+- Group types that share storage shape (e.g. "diagram label" and "graph reading" might both just be "image + labeled points") — these become one discriminator with a `variant` or `renderMode` field, not two full discriminators.
+- Types that are purely new rendering of existing data (subject-themed diagram skins, etc.) don't need new schema at all — just new components reading the same shape.
+
+> This step is what actually prevents the "infinite hell" — most new types should be new components, not new schema.
+
+## 4. Split the studio components (careful — don't break canvas logic)
+
+`drawio-studio.tsx` (965 lines), `image-annotation-editor.tsx` (468 lines), `visual-diagram-editor.tsx` (189 lines) — legitimately complex canvas/diagram tools, not the same problem as #2/#3. Don't rewrite logic, only extract.
+
+- Before touching anything: add/confirm a manual test checklist (draw shape, move shape, save, reload, export) so regressions are obvious.
+- Extract pure UI panels (toolbars, property inspectors, color pickers) into their own components first — lowest risk, no canvas-state coupling usually.
+- Extract canvas event handlers into custom hooks (`useCanvasDrawing`, `useShapeSelection`, etc.) one at a time, re-testing the checklist after each extraction.
+- Leave the core canvas render loop for last, and only touch it if a hook extraction forces it.
+
+## 5. Housekeeping
+- Consolidate the 13 root-level status docs (`00-START-HERE.md`, `IMPLEMENTATION_COMPLETE.md`, `FINAL_REPORT.md`, `VERIFICATION_SUMMARY.md`, `NEXT_STEPS.md`, `TODO.md`, etc.) into a single `docs/` folder with one living `README.md` / `STATUS.md`. Archive or delete the rest — they're mostly point-in-time snapshots from earlier sessions.
+- Confirm `build.log` / `build_output.log` are gitignored, not committed artifacts.
+
+## 6. Parked for later (not blocking, don't start yet)
+- **Postgres migration** (Mongo → Postgres "when we go to production"). Worth a dedicated plan of its own later: what drives the switch (relations? transactions? hosting cost?), whether it's a full cutover or hybrid, and a real data-migration script — don't start this until the schema in #2/#3 is stable, or you'll be migrating a moving target.
+- **Kid-focused question types / parent tracking** — deliberately not in this plan; separate compliance and product decision (age-gating, COPPA/GDPR-K) discussed earlier, not a code cleanup item.
+
+**Suggested order: 1 → 3 → 2 → 4 → 5.** Mapping type families (3) before building discriminators (2) avoids designing schema for types you'll end up merging.
+
+---
+---
+
 # Expand Answerly Question Types: 4 → 12
 
 Extend the question system by adding 8 new types while keeping the existing 4 intact.

@@ -14,6 +14,12 @@
 
 ---
 
+## 🐛 Bugs / Theme Fixes
+- [ ] **Studio: light mode not applying** — theme switch to light has no effect on the studio/drawio components
+- [ ] **Video question: dark mode not applying** — theme switch to dark has no effect on the video question player/editor
+
+---
+
 ## 🚀 Phase 1: User Experience Enhancements
 
 ### Quiz Experience

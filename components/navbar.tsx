@@ -17,7 +17,7 @@ import GlobalSearch from "@/components/global-search"
 import LanguageToggle from "@/components/language-toggle"
 import ThemeToggle from "@/components/theme-toggle"
 import { LogOut, User, FileText, Menu } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
 import { ClientOnly } from "@/components/ui/client-only"
@@ -26,9 +26,11 @@ import { signOut } from "next-auth/react"
 export default function Navbar() {
   const { dict, lang } = useI18n()
   const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [authReady, setAuthReady] = useState(false)
   const [avatarLoaded, setAvatarLoaded] = useState(false)
   const [mounted, setMounted] = useState(false)
   
@@ -38,7 +40,7 @@ export default function Navbar() {
   
   useEffect(() => {
     if (!mounted) return
-    
+
     const loadUserData = () => {
       try {
         const raw = localStorage.getItem('answerly-user')
@@ -53,27 +55,36 @@ export default function Navbar() {
         setUser(null)
       } finally {
         setIsLoading(false)
+        setAuthReady(true)
       }
     }
 
     loadUserData()
-    
-    // Reduce frequency to prevent constant re-renders
-    const interval = setInterval(loadUserData, 5000) // Changed from 1000ms to 5000ms
-    
-    return () => clearInterval(interval)
+
+    const handleUserUpdate = () => loadUserData()
+    window.addEventListener('user-updated', handleUserUpdate)
+
+    const interval = setInterval(loadUserData, 5000)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('user-updated', handleUserUpdate)
+    }
   }, [mounted])
 
   const handleLogout = async () => {
+    setUser(null)
+    setAuthReady(false)
+    localStorage.removeItem('answerly-user')
+    localStorage.removeItem('answerly-token')
+    window.dispatchEvent(new Event('user-updated'))
+
     try {
       await signOut({ redirect: false })
     } catch (e) {
       // ignore, we'll still clear local state
     }
-    localStorage.removeItem('answerly-user')
-    localStorage.removeItem('answerly-token')
-    setUser(null)
-    window.dispatchEvent(new Event('user-updated'))
+
     toast({ title: 'Logged out', description: 'You have been successfully logged out.' })
     router.push('/')
   }
@@ -127,7 +138,8 @@ export default function Navbar() {
   }
 
   const token = mounted ? localStorage.getItem('answerly-token') : null
-  const isLoggedIn = mounted && (user?.id || user?._id)
+  const isLoggedIn = authReady && mounted && (user?.id || user?._id)
+  const isAuthPage = pathname === '/login' || pathname === '/signup'
 
   const mainLinks = [
     { href: "/", label: dict.nav.home },
@@ -144,9 +156,11 @@ export default function Navbar() {
   ] : []
 
   // Auth link (login/logout)
-  const authLink = isLoggedIn 
-    ? { href: "#", label: dict.nav.logout, onClick: handleLogout, isButton: true }
-    : { href: "/login", label: dict.nav.login }
+  const authLink = isAuthPage
+    ? null
+    : isLoggedIn
+      ? { href: "#", label: dict.nav.logout, onClick: handleLogout, isButton: true }
+      : { href: "/login", label: dict.nav.login }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/40 dark:border-white/10 bg-gradient-to-b from-white/70 to-white/40 dark:from-[#0a0b1a]/70 dark:to-[#0a0b1a]/40 backdrop-blur supports-[backdrop-filter]:bg-transparent transition-colors duration-500">
@@ -193,9 +207,9 @@ export default function Navbar() {
           <LanguageToggle />
           <ThemeToggle />
           
-          {/* Auth Link - Only show login link when not logged in */}
+          {/* Auth Link - Hide on auth pages and only show when auth is ready and not logged in */}
           <ClientOnly>
-            {!isLoggedIn && (
+            {!isAuthPage && authReady && !isLoggedIn && (
               <Link
                 href="/login"
                 prefetch={true}
@@ -205,10 +219,10 @@ export default function Navbar() {
               </Link>
             )}
           </ClientOnly>
-          
-          {/* Profile Avatar - Only show when logged in */}
+
+          {/* Profile Avatar - Only show when auth is ready and logged in */}
           <ClientOnly>
-            {isLoggedIn && user && (
+            {authReady && isLoggedIn && user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -293,15 +307,17 @@ export default function Navbar() {
                 ))}
               </ClientOnly>
               <ClientOnly>
-                {authLink.isButton ? (
-                  <DropdownMenuItem onClick={authLink.onClick} className="text-red-600 dark:text-red-400">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {authLink.label}
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem asChild>
-                    <Link href={authLink.href}>{authLink.label}</Link>
-                  </DropdownMenuItem>
+                {!isAuthPage && authLink && (
+                  authLink.isButton ? (
+                    <DropdownMenuItem onClick={authLink.onClick} className="text-red-600 dark:text-red-400">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      {authLink.label}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem asChild>
+                      <Link href={authLink.href}>{authLink.label}</Link>
+                    </DropdownMenuItem>
+                  )
                 )}
               </ClientOnly>
             </DropdownMenuContent>
