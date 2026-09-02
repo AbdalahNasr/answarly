@@ -37,6 +37,13 @@ export interface VideoQuestionData {
 	instructions?: string
 }
 
+export type QuestionFamily =
+	| 'choice'
+	| 'text'
+	| 'structured'
+	| 'visual'
+	| 'media'
+
 export type QuestionType = 
 	| 'multiple_choice'
 	| 'true_false'
@@ -52,6 +59,21 @@ export type QuestionType =
 	| 'image_mcq'
 	| 'drawio_studio'
 	| 'video'
+
+export const QUESTION_FAMILIES: Record<QuestionFamily, QuestionType[]> = {
+	choice: ['multiple_choice', 'true_false', 'image_mcq'],
+	text: ['open_ended', 'math_equation'],
+	structured: ['fill_in_blank', 'match_pairs', 'ordering'],
+	visual: ['diagram_label', 'drawio_studio'],
+	media: ['listening', 'graph_chart', 'video'],
+}
+
+export function getQuestionFamily(type: QuestionType): QuestionFamily {
+	for (const [family, types] of Object.entries(QUESTION_FAMILIES) as [QuestionFamily, QuestionType[]][]) {
+		if (types.includes(type)) return family
+	}
+	return 'choice'
+}
 
 export interface MatchPair {
 	id: string
@@ -74,6 +96,7 @@ export interface Label {
 export type Question = {
 	_id?: string
 	question: string
+	family?: QuestionFamily
 	type: QuestionType
 	options?: string[]
 	answer?: string

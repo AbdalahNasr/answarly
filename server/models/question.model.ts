@@ -52,6 +52,7 @@ export interface IContentLayout {
 
 export interface IQuestion extends Document {
   text: string;
+  family?: "choice" | "text" | "structured" | "visual" | "media";
   options?: string[]; // Multiple choice answers
   correctAnswer?: string; // Can be an option or a key
   keywords?: string[]; // Keywords for open-ended question evaluation
@@ -91,6 +92,11 @@ export interface IQuestion extends Document {
 const QuestionSchema = new Schema<IQuestion>(
   {
     text: { type: String, required: true, trim: true },
+    family: {
+      type: String,
+      enum: ["choice", "text", "structured", "visual", "media"],
+      default: "choice",
+    },
     options: { type: [String] }, // Made optional for different question types
     correctAnswer: { type: String }, // Made optional for different question types
     keywords: { type: [String] }, // Keywords for open-ended question evaluation

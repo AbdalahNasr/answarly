@@ -50,8 +50,6 @@ import {
   Bold,
   Italic,
   Underline,
-  Palette,
-  Paintbrush,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -70,6 +68,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { DrawioStylePanel } from "@/components/drawio-style-panel"
+import { DrawioTextPanel } from "@/components/drawio-text-panel"
+import { useDrawioEditorActions } from "@/hooks/use-drawio-editor-actions"
 import type { Editor } from "@tldraw/tldraw"
 import type { VisualDiagramData } from "@/lib/questions"
 import "@tldraw/tldraw/tldraw.css"
@@ -166,6 +167,35 @@ export default function DrawioStudio({
 
   const persistenceKeyFinal = value?.persistenceKey || persistenceKey
 
+  const {
+    zoomIn,
+    zoomOut,
+    zoomToFit,
+    applyFillColor,
+    applyStrokeColor,
+    applyTextProps,
+    alignSelected,
+    distH,
+    distV,
+    doGroup,
+    doUngroup,
+    doUndo,
+    doRedo,
+    doDelete,
+    doDuplicate,
+    addQuickShape,
+    addTable,
+  } = useDrawioEditorActions({
+    editorRef,
+    fillColor,
+    strokeColor,
+    strokeWidth,
+    textColor,
+    fontSize,
+    boldText,
+    italicText,
+  })
+
   const handleEditorMount = useCallback((editor: Editor) => {
     editorRef.current = editor
     hasMountedRef.current = true
@@ -218,128 +248,6 @@ export default function DrawioStudio({
       })
     } catch {}
   }, [gridVisible, gridSize])
-
-  const zoomIn = () => {
-    if (!editorRef.current) return
-    try { editorRef.current.zoomIn() } catch {}
-  }
-  const zoomOut = () => {
-    if (!editorRef.current) return
-    try { editorRef.current.zoomOut() } catch {}
-  }
-  const zoomToFit = () => {
-    if (!editorRef.current) return
-    try { editorRef.current.zoomToFit() } catch {}
-  }
-
-  const applyFillColor = () => {
-    if (!editorRef.current) return
-    try {
-      const sel = editorRef.current.getSelectedShapes()
-      sel.forEach((s) => {
-        editorRef.current?.updateShape(s.id, {
-          props: { fill: fillColor } as any,
-        })
-      })
-    } catch {}
-  }
-
-  const applyStrokeColor = () => {
-    if (!editorRef.current) return
-    try {
-      const sel = editorRef.current.getSelectedShapes()
-      sel.forEach((s) => {
-        editorRef.current?.updateShape(s.id, {
-          props: { stroke: strokeColor, strokeWidth } as any,
-        })
-      })
-    } catch {}
-  }
-
-  const applyTextProps = () => {
-    if (!editorRef.current) return
-    try {
-      const sel = editorRef.current.getSelectedShapes()
-      sel.forEach((s) => {
-        const props: any = { color: textColor, fontSize }
-        if (boldText) props.fontWeight = 700
-        if (italicText) props.fontStyle = "italic"
-        editorRef.current?.updateShape(s.id, { props })
-      })
-    } catch {}
-  }
-
-  const alignSelected = (axis: "left" | "center-h" | "right" | "top" | "center-v" | "bottom") => {
-    if (!editorRef.current) return
-    try {
-      switch (axis) {
-        case "left": editorRef.current.alignLeft(); break
-        case "center-h": editorRef.current.alignHorizontalCenter(); break
-        case "right": editorRef.current.alignRight(); break
-        case "top": editorRef.current.alignTop(); break
-        case "center-v": editorRef.current.alignVerticalCenter(); break
-        case "bottom": editorRef.current.alignBottom(); break
-      }
-    } catch {}
-  }
-
-  const distH = () => { try { editorRef.current?.distributeHorizontally() } catch {} }
-  const distV = () => { try { editorRef.current?.distributeVertically() } catch {} }
-  const doGroup = () => { try { editorRef.current?.group() } catch {} }
-  const doUngroup = () => { try { editorRef.current?.ungroup() } catch {} }
-  const doUndo = () => { try { editorRef.current?.undo() } catch {} }
-  const doRedo = () => { try { editorRef.current?.redo() } catch {} }
-  const doDelete = () => { try { editorRef.current?.deleteShapes(editorRef.current?.getSelectedShapeIds() || []) } catch {} }
-  const doDuplicate = () => { try { editorRef.current?.duplicateShapes(editorRef.current?.getSelectedShapeIds() || []) } catch {} }
-
-  const addQuickShape = (kind: string) => {
-    if (!editorRef.current) return
-    try {
-      const editor = editorRef.current
-      const { x: cx, y: cy } = editor.viewportPageCenter ?? { x: 200, y: 200 }
-      let geo = "rectangle"
-      switch (kind) {
-        case "square": case "rectangle": case "process": case "terminator": geo = "rectangle"; break
-        case "circle": case "ellipse": geo = "ellipse"; break
-        case "diamond": case "decision": geo = "diamond"; break
-        case "triangle": geo = "triangle"; break
-        case "hexagon": geo = "pentagon"; break
-      }
-      editor.createShape({
-        type: "geo",
-        x: cx - 80,
-        y: cy - 40,
-        props: {
-          geo,
-          w: 160,
-          h: 80,
-          text: kind[0].toUpperCase() + kind.slice(1).replace(/[_-]/g, " "),
-          fill: fillColor,
-          stroke: strokeColor,
-          strokeWidth,
-          color: textColor,
-          fontSize,
-        } as any,
-      })
-    } catch {}
-  }
-
-  const addTable = (rows: number = 3, cols: number = 3) => {
-    if (!editorRef.current) return
-    try {
-      const { x: cx, y: cy } = editorRef.current.viewportPageCenter ?? { x: 200, y: 200 }
-      editorRef.current.createShape({
-        type: "embed",
-        x: cx - 120,
-        y: cy - 60,
-        props: {
-          w: 240,
-          h: 120,
-          url: `data:text/plain,Table%20${rows}x${cols}`,
-        } as any,
-      })
-    } catch {}
-  }
 
   return (
     <div
@@ -720,147 +628,36 @@ export default function DrawioStudio({
 
               {/* STYLE TAB */}
               <TabsContent value="style" className="p-4 space-y-5 mt-0 border-none">
-                <div className="space-y-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#464658] ml-1">Fill Color</span>
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-8 gap-1.5">
-                      {FILL_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setFillColor(c)}
-                          className={cn(
-                            "h-7 rounded-lg border-2 transition-all",
-                            fillColor === c ? "border-fuchsia-400 scale-110 shadow-[0_0_10px_rgba(192,38,211,0.4)]" : "border-white/10"
-                          )}
-                          style={{ background: c }}
-                        />
-                      ))}
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={applyFillColor}
-                      className="w-full h-9 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/25 text-[10px] font-black uppercase tracking-widest"
-                    >
-                      <Paintbrush className="h-3 w-3 mr-1.5" /> Apply Fill
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#464658] ml-1">Stroke</span>
-                  <div className="space-y-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                    <div className="grid grid-cols-8 gap-1.5">
-                      {STROKE_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setStrokeColor(c)}
-                          className={cn(
-                            "h-7 rounded-lg border-2 transition-all",
-                            strokeColor === c ? "border-violet-400 scale-110 shadow-[0_0_10px_rgba(99,102,241,0.4)]" : "border-white/10"
-                          )}
-                          style={{ background: c }}
-                        />
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-[#aaa9be]">Stroke Width: {strokeWidth}px</Label>
-                      <Slider
-                        value={[strokeWidth]}
-                        onValueChange={(v) => setStrokeWidth(v[0])}
-                        min={1} max={8} step={1}
-                        className="py-1"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={applyStrokeColor}
-                      className="w-full h-9 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 hover:bg-violet-500/25 text-[10px] font-black uppercase tracking-widest"
-                    >
-                      <Palette className="h-3 w-3 mr-1.5" /> Apply Stroke
-                    </Button>
-                  </div>
-                </div>
+                <DrawioStylePanel
+                  fillColors={FILL_COLORS}
+                  fillColor={fillColor}
+                  onFillColorChange={setFillColor}
+                  onApplyFill={applyFillColor}
+                  strokeColors={STROKE_COLORS}
+                  strokeColor={strokeColor}
+                  onStrokeColorChange={setStrokeColor}
+                  strokeWidth={strokeWidth}
+                  onStrokeWidthChange={setStrokeWidth}
+                  onApplyStroke={applyStrokeColor}
+                />
               </TabsContent>
 
               {/* TEXT TAB */}
               <TabsContent value="text" className="p-4 space-y-5 mt-0 border-none">
-                <div className="space-y-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#464658] ml-1">Typography</span>
-                  <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5">
-                    <button
-                      type="button"
-                      onClick={() => setBoldText((v) => !v)}
-                      className={cn(
-                        "h-8 w-8 flex items-center justify-center rounded-md transition",
-                        boldText ? "bg-emerald-500/20 text-emerald-300" : "text-[#aaa9be] hover:text-[#e7e6fc]"
-                      )}
-                    >
-                      <Bold className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setItalicText((v) => !v)}
-                      className={cn(
-                        "h-8 w-8 flex items-center justify-center rounded-md transition",
-                        italicText ? "bg-emerald-500/20 text-emerald-300" : "text-[#aaa9be] hover:text-[#e7e6fc]"
-                      )}
-                    >
-                      <Italic className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUnderlineText((v) => !v)}
-                      className={cn(
-                        "h-8 w-8 flex items-center justify-center rounded-md transition",
-                        underlineText ? "bg-emerald-500/20 text-emerald-300" : "text-[#aaa9be] hover:text-[#e7e6fc]"
-                      )}
-                    >
-                      <Underline className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#464658] ml-1">Font Size</span>
-                  <div className="space-y-2">
-                    <Slider
-                      value={[fontSize]}
-                      onValueChange={(v) => setFontSize(v[0])}
-                      min={8} max={48} step={1}
-                    />
-                    <div className="text-xs text-[#e7e6fc] text-center font-mono">{fontSize}px</div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#464658] ml-1">Text Color</span>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {TEXT_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setTextColor(c)}
-                        className={cn(
-                          "h-8 rounded-lg border-2 transition-all",
-                          textColor === c ? "border-emerald-400 scale-110 shadow-[0_0_10px_rgba(16,185,129,0.4)]" : "border-white/10"
-                        )}
-                        style={{ background: c }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={applyTextProps}
-                  className="w-full h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-[10px] font-black uppercase tracking-widest"
-                >
-                  <Type className="h-3 w-3 mr-1.5" /> Apply Text Style
-                </Button>
+                <DrawioTextPanel
+                  textColors={TEXT_COLORS}
+                  textColor={textColor}
+                  onTextColorChange={setTextColor}
+                  fontSize={fontSize}
+                  onFontSizeChange={setFontSize}
+                  boldText={boldText}
+                  onBoldTextChange={setBoldText}
+                  italicText={italicText}
+                  onItalicTextChange={setItalicText}
+                  underlineText={underlineText}
+                  onUnderlineTextChange={setUnderlineText}
+                  onApplyTextProps={applyTextProps}
+                />
               </TabsContent>
 
               {/* ARRANGE TAB */}

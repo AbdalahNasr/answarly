@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
 import type { Difficulty, QuestionType, VisualDiagramData, VideoQuestionData } from "@/lib/questions"
-import { addQuestion } from "@/lib/questions"
+import { addQuestion, getQuestionFamily, QUESTION_FAMILIES } from "@/lib/questions"
 import { ensureCategory /* keep existing helper */ } from "@/lib/categories"
 import { ensureSubcategory } from "@/lib/subcategories"
 import { fetchCategories, fetchCategoriesByParent, createCategory, type Category } from "@/lib/categories"
@@ -94,6 +94,54 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
   const [diagramLabels, setDiagramLabels] = useState<Array<{ x: number; y: number; label: string }>>([])
   const [drawioStudioData, setDrawioStudioData] = useState<VisualDiagramData | undefined>(undefined)
   const [videoQuestionData, setVideoQuestionData] = useState<VideoQuestionData | undefined>(undefined)
+
+  const activeFamily = getQuestionFamily(type)
+
+  const typeGroups = [
+    {
+      family: "choice",
+      label: "Choice",
+      types: [
+        { id: "multiple_choice", label: "Multiple Choice", icon: Layers },
+        { id: "true_false", label: "True / False", icon: CheckCircle2 },
+        { id: "image_mcq", label: "Image MCQ", icon: ImageIcon },
+      ],
+    },
+    {
+      family: "text",
+      label: "Text",
+      types: [
+        { id: "open_ended", label: "Open Ended", icon: Search },
+        { id: "math_equation", label: "Math / Equation", icon: Calculator },
+      ],
+    },
+    {
+      family: "structured",
+      label: "Structured",
+      types: [
+        { id: "fill_in_blank", label: "Fill in Blank", icon: FormInput },
+        { id: "match_pairs", label: "Match Pairs", icon: Shuffle },
+        { id: "ordering", label: "Ordering", icon: AlignJustify },
+      ],
+    },
+    {
+      family: "visual",
+      label: "Visual",
+      types: [
+        { id: "diagram_label", label: "Diagram Label", icon: Layers },
+        { id: "drawio_studio", label: "Draw.io Studio", icon: Workflow },
+      ],
+    },
+    {
+      family: "media",
+      label: "Media",
+      types: [
+        { id: "listening", label: "Listening", icon: Headphones },
+        { id: "graph_chart", label: "Graph / Chart", icon: BarChart },
+        { id: "video", label: "Video", icon: Video },
+      ],
+    },
+  ]
 
   // Update state when stitch data changes
   useEffect(() => {
@@ -547,52 +595,54 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
           <div className="lg:col-span-4 space-y-8">
             {/* TYPE SELECTOR - CARD BASED */}
             <div className="space-y-4">
-              <Label className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground ml-1">Question Type</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { id: "multiple_choice", label: "Multiple Choice", icon: Layers },
-                  { id: "true_false", label: "True / False", icon: CheckCircle2 },
-                  { id: "code_snippet", label: "Code Snippet", icon: Code2 },
-                  { id: "open_ended", label: "Open Ended", icon: Search },
-                  { id: "listening", label: "Listening", icon: Headphones },
-                  { id: "fill_in_blank", label: "Fill in Blank", icon: FormInput },
-                  { id: "match_pairs", label: "Match Pairs", icon: Shuffle },
-                  { id: "ordering", label: "Ordering", icon: AlignJustify },
-                  { id: "math_equation", label: "Math / Equation", icon: Calculator },
-                  { id: "graph_chart", label: "Graph / Chart", icon: BarChart },
-                  { id: "diagram_label", label: "Diagram Label", icon: Layers },
-                  { id: "image_mcq", label: "Image MCQ", icon: ImageIcon },
-                  { id: "drawio_studio", label: "Draw.io Studio", icon: Workflow },
-                  { id: "video", label: "Video", icon: Video },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setType(t.id as QuestionType)}
-                    onMouseEnter={() => {
-                      if (t.id === "drawio_studio") router.prefetch("/drawio-studio")
-                      if (t.id === "video") router.prefetch("/video-question")
-                    }}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all duration-300 group",
-                      type === t.id 
-                        ? "bg-primary/10 border-primary shadow-[0_0_20px_rgba(192,38,211,0.15)] scale-[1.02]" 
-                        : "bg-card/40 border-white/5 hover:border-white/20 hover:bg-card/60"
-                    )}
-                  >
-                    <div className={cn(
-                      "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
-                      type === t.id ? "bg-primary text-white" : "bg-background text-muted-foreground group-hover:text-foreground"
-                    )}>
-                      <t.icon className="w-5 h-5" />
+              <div className="flex items-center justify-between ml-1">
+                <Label className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground">Question Type</Label>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/80">
+                  {activeFamily}
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                {typeGroups.map((group) => (
+                  <div key={group.family} className="space-y-2">
+                    <div className="flex items-center gap-2 px-2">
+                      <span className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground/60">{group.label}</span>
+                      <div className="h-px flex-1 bg-white/10" />
                     </div>
-                    <span className={cn(
-                      "text-[10px] font-black uppercase tracking-widest text-center",
-                      type === t.id ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {t.label}
-                    </span>
-                  </button>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {group.types.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setType(t.id as QuestionType)}
+                          onMouseEnter={() => {
+                            if (t.id === "drawio_studio") router.prefetch("/drawio-studio")
+                            if (t.id === "video") router.prefetch("/video-question")
+                          }}
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all duration-300 group",
+                            type === t.id 
+                              ? "bg-primary/10 border-primary shadow-[0_0_20px_rgba(192,38,211,0.15)] scale-[1.02]" 
+                              : "bg-card/40 border-white/5 hover:border-white/20 hover:bg-card/60"
+                          )}
+                        >
+                          <div className={cn(
+                            "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                            type === t.id ? "bg-primary text-white" : "bg-background text-muted-foreground group-hover:text-foreground"
+                          )}>
+                            <t.icon className="w-5 h-5" />
+                          </div>
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-widest text-center",
+                            type === t.id ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {t.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
