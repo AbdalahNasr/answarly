@@ -27,7 +27,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <LanguageProvider>
-            <div className="min-h-screen bg-gradient-to-br from-zinc-50 via-white to-zinc-100 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900">
+            <div className="min-h-screen bg-[#0A0B1A] dark:bg-[#0A0B1A]">
               <main>{children}</main>
               <Toaster />
             </div>

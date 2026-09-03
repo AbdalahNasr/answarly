@@ -112,7 +112,12 @@ export async function POST(request: NextRequest) {
     const userId = user.id || user.userId || user._id
     
     const body = await request.json()
-    const { text, type, difficulty, options, correctAnswer, keywords, category, reason } = body
+    const { 
+      text, family, type, difficulty, options, correctAnswer, keywords, category, 
+      reason, heading, description, media, contentLayout,
+      audioUrl, listeningAnswerFormat, blankTemplate, blankAnswers, 
+      matchPairs, orderItems, latex, diagramLabels 
+    } = body
     
     // Validate required fields
     if (!text || !type || !difficulty || !category) {
@@ -155,6 +160,51 @@ export async function POST(request: NextRequest) {
         )
       }
     }
+
+    if (type === 'listening') {
+      if (!audioUrl) {
+        return NextResponse.json({ error: 'Listening questions must have an audio URL' }, { status: 400 })
+      }
+      if (listeningAnswerFormat === 'mcq' && (!options || options.length < 2)) {
+        return NextResponse.json({ error: 'Listening MCQ questions must have at least 2 options' }, { status: 400 })
+      }
+    }
+
+    if (type === 'fill_in_blank') {
+      if (!blankTemplate || !blankAnswers || blankAnswers.length === 0) {
+        return NextResponse.json({ error: 'Fill-in-the-blank questions must have a template and answers' }, { status: 400 })
+      }
+    }
+
+    if (type === 'match_pairs') {
+      if (!matchPairs || matchPairs.length < 2) {
+        return NextResponse.json({ error: 'Match pairs questions must have at least 2 pairs' }, { status: 400 })
+      }
+    }
+
+    if (type === 'ordering') {
+      if (!orderItems || orderItems.length < 2) {
+        return NextResponse.json({ error: 'Ordering questions must have at least 2 items' }, { status: 400 })
+      }
+    }
+
+    if (type === 'math_equation') {
+      if (!latex || !correctAnswer) {
+        return NextResponse.json({ error: 'Math questions must have a LaTeX equation and correct answer' }, { status: 400 })
+      }
+    }
+
+    if (type === 'graph_chart' || type === 'image_mcq' || type === 'diagram_label') {
+      if (!media || media.length === 0) {
+        return NextResponse.json({ error: `${type} questions must have at least one image/media` }, { status: 400 })
+      }
+    }
+
+    if (type === 'diagram_label') {
+      if (!diagramLabels || diagramLabels.length === 0) {
+        return NextResponse.json({ error: 'Diagram label questions must have at least one label' }, { status: 400 })
+      }
+    }
     
     // Check if category exists
     const categoryExists = await Category.findById(category)
@@ -167,14 +217,32 @@ export async function POST(request: NextRequest) {
     
     const question = new Question({
       text: text.trim(),
+      family: family || (['multiple_choice', 'true_false', 'image_mcq'].includes(type) ? 'choice' : ['open_ended', 'math_equation'].includes(type) ? 'text' : ['fill_in_blank', 'match_pairs', 'ordering'].includes(type) ? 'structured' : ['diagram_label', 'drawio_studio'].includes(type) ? 'visual' : 'media'),
       type,
       difficulty,
-      options: type === 'multiple_choice' ? options : undefined,
-      correctAnswer: type === 'multiple_choice' || type === 'true_false' || type === 'open_ended' ? correctAnswer : undefined,
+      options: (type === 'multiple_choice' || type === 'listening' || type === 'image_mcq') ? options : undefined,
+      correctAnswer: (type === 'multiple_choice' || type === 'true_false' || type === 'open_ended' || type === 'listening' || type === 'math_equation' || type === 'graph_chart' || type === 'image_mcq') ? correctAnswer : undefined,
       keywords: type === 'open_ended' && keywords && keywords.length > 0 ? keywords : undefined,
       category,
-      reason: type === 'true_false' ? reason : undefined,
-      createdBy: userId
+      reason: (type === 'true_false' || reason) ? reason : undefined,
+      createdBy: userId,
+      heading: heading?.trim() || undefined,
+      description: description?.trim() || undefined,
+      media: media && media.length > 0 ? media : undefined,
+      contentLayout: contentLayout || {
+        showHeading: true,
+        showDescription: true,
+        headingPosition: 'before',
+        descriptionPosition: 'before'
+      },
+      audioUrl,
+      listeningAnswerFormat,
+      blankTemplate,
+      blankAnswers,
+      matchPairs,
+      orderItems,
+      latex,
+      diagramLabels
     })
     
     await question.save()

@@ -1,0 +1,93 @@
+# Answerly Feature Roadmap
+
+---
+
+## Phase 1 — Quick Wins
+
+### 1. Images on Questions
+- [/] Write implementation plan
+- [ ] **Decision**: Confirm upload strategy (Cloudinary / GridFS / Local)
+- [ ] Add `imageUrl` field to Question model
+- [ ] Create `/api/questions/image` upload endpoint
+- [ ] Update `AddQuestionForm` with image upload UI
+- [ ] Update `QuestionCard` to display image
+- [ ] Update `QuizQuestion` to display image
+- [ ] Update [lib/questions.ts](file:///d:/Next.js-projects/answarly/lib/questions.ts) type definition
+- [ ] Add i18n strings (EN/AR)
+- [ ] Build & browser verification
+
+### 2. Student Notes (Downloadable)
+- [ ] Design notes data model (localStorage + MongoDB)
+- [ ] Add collapsible notes panel to quiz/take and topic detail pages
+- [ ] Implement localStorage storage for guests
+- [ ] Implement MongoDB storage for logged-in users
+- [ ] Add "Download Notes" button (PDF/Markdown export)
+- [ ] Add i18n strings (EN/AR)
+- [ ] Verification
+
+### 3. Progress Circles on Topics
+- [ ] Create circular progress indicator component
+- [ ] Integrate with existing Progress model (`/api/progress`)
+- [ ] Add to Topics page topic cards
+- [ ] Add to HomeClient trending topics grid
+- [ ] Color logic: red (0–33%) → yellow (34–66%) → green (67–100%)
+- [ ] LocalStorage fallback for guests
+- [ ] Verification
+
+### 4. Points & Gamification
+- [ ] Add `xp`, `streak`, `lastQuizDate` fields to User model
+- [ ] XP award logic: +10/correct, +50 for 100%, +5/day streak
+- [ ] Streak counter (consecutive days with quiz)
+- [ ] Show XP total and level on profile page
+- [ ] Reflect XP on leaderboard
+- [ ] Add i18n strings (EN/AR)
+- [ ] Verification
+
+### 5. User Feedback System
+- [ ] Build post-quiz feedback modal (1–5 stars + comment)
+- [ ] Create POST `/api/feedback` route
+- [ ] Create GET `/api/feedback` (admin-only)
+- [ ] Wire modal into quiz results page
+- [ ] Verification
+
+---
+
+## Phase 2 — Core Experience Upgrades
+
+### 6. Reading Mode for Large Subjects
+- [ ] Create `/topics/[slug]/read` page
+- [ ] Left sidebar with subtopic list + progress circles
+- [ ] Main area with markdown-rendered subtopic content
+- [ ] Track read/completed sections
+- [ ] Fullscreen button (Fullscreen API) on read page + quiz/take
+- [ ] Verification
+
+### 7. Smart Interest Detection
+- [ ] Analyze History data for top categories
+- [ ] Build "Recommended for You" section on homepage
+- [ ] Pure logic — no external AI
+- [ ] Verification
+
+### 8. GIFs & Animations on Content
+- [ ] Add optional `gifUrl` field to Question model
+- [ ] Display GIFs inline in answer reveal section of QuestionCard
+- [ ] Keep backward-compatible (optional field)
+- [ ] Verification
+
+---
+
+## Phase 3 — AI Features (Hugging Face Free Tier)
+
+### 9. Revision Mode — Chat with Subject
+- [ ] Add "Chat with this Topic" button on topic pages
+- [ ] Build chat interface component
+- [ ] Integrate Hugging Face Inference API (`Mistral-7B-Instruct-v0.3`)
+- [ ] System prompt with topic context injection
+- [ ] Verification
+
+### 10. AI Mentor
+- [ ] Persistent "Mentor" chat in navbar
+- [ ] Inject user's weak topics & quiz history as context
+- [ ] Study suggestions, wrong-answer explanations, streak encouragement
+- [ ] Same Hugging Face model
+- [ ] Verification

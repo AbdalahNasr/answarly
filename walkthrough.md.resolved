@@ -1,0 +1,298 @@
+# Answerly — Full Project Walkthrough
+
+> A modern, bilingual Q&A and quiz platform built with **Next.js 15**, **TypeScript**, **Tailwind CSS v4**, **shadcn/ui**, **MongoDB** (Mongoose), and **PostgreSQL** (Sequelize).
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Client["Client (React 18)"]
+        Pages["Pages & Layouts"]
+        Components["21 Custom Components"]
+        UI["67 shadcn/ui Components"]
+        Hooks["Custom Hooks"]
+        LibClient["Client-side Lib"]
+    end
+    subgraph API["Next.js API Routes (15+)"]
+        AuthAPI["Auth Routes"]
+        QuizAPI["Quiz Routes"]
+        QuestionsAPI["Questions Routes"]
+        CatAPI["Categories Routes"]
+        LeaderboardAPI["Leaderboard Routes"]
+        HistoryAPI["History Routes"]
+        UsersAPI["User Routes"]
+    end
+    subgraph Server["Server Layer"]
+        Controllers["Controllers (10)"]
+        Services["Services (14)"]
+        Models["Models (10)"]
+        Middleware["Middleware (2)"]
+    end
+    subgraph DB["Databases"]
+        MongoDB
+        PostgreSQL
+    end
+    Pages --> Components
+    Components --> UI
+    Components --> Hooks
+    Components --> LibClient
+    LibClient --> API
+    API --> Controllers
+    Controllers --> Services
+    Services --> Models
+    Models --> DB
+```
+
+---
+
+## Components (`/components`)
+
+### Core Layout Components
+
+| Component | File | Purpose |
+|---|---|---|
+| **Navbar** | [navbar.tsx](file:///d:/Next.js-projects/answarly/components/navbar.tsx) | Sticky top navigation with logo, page links (Home, Topics, History, Leaderboard, Q&A, Quiz), global search trigger, language toggle, theme toggle, login/logout, and avatar dropdown. Responsive — collapses into a dropdown menu on mobile. Polls `localStorage` for user session data. |
+| **ConditionalFooter** | [conditional-footer.tsx](file:///d:/Next.js-projects/answarly/components/conditional-footer.tsx) | Footer with branding and copyright. Automatically **hides itself** on auth pages (`/login`, `/signup`) and the quiz results page to keep those views clean. |
+| **SmoothScroll** | [smooth-scroll.tsx](file:///d:/Next.js-projects/answarly/components/smooth-scroll.tsx) | Invisible component that sets `scroll-behavior: smooth` on `<html>` at mount. Restores the previous value on unmount. |
+
+---
+
+### i18n & Theming
+
+| Component | File | Purpose |
+|---|---|---|
+| **LanguageProvider** | [i18n.tsx](file:///d:/Next.js-projects/answarly/components/i18n.tsx) | React context provider for **English/Arabic** internationalization. Contains full dictionaries (`en`, `ar`) for nav, hero, topics, login, Q&A, history, and footer strings. Persists language choice in `localStorage` and sets `dir="rtl"` when Arabic is active. Exposes `useI18n()` hook. |
+| **LanguageToggle** | [language-toggle.tsx](file:///d:/Next.js-projects/answarly/components/language-toggle.tsx) | Pill button toggling between **EN** and **AR**. Calls `setLang()` from the i18n context. Renders a skeleton-safe fallback before mount to prevent hydration mismatches. |
+| **ThemeToggle** | [theme-toggle.tsx](file:///d:/Next.js-projects/answarly/components/theme-toggle.tsx) | Animated sun/moon icon button for **dark ↔ light** theme. Reads and writes to `localStorage` under key `answerly-theme`. Directly toggles the `.dark` class on `<html>` for instant visual feedback with transition animations between icons. |
+| **ThemeProvider** | [theme-provider.tsx](file:///d:/Next.js-projects/answarly/components/theme-provider.tsx) | Thin wrapper around `next-themes`'s `ThemeProvider`. Used in the site layout to enable system-level theme detection. |
+
+---
+
+### Animation & Effects
+
+| Component | File | Purpose |
+|---|---|---|
+| **Reveal** | [reveal.tsx](file:///d:/Next.js-projects/answarly/components/reveal.tsx) | Scroll-triggered entrance animation. Uses `IntersectionObserver` (threshold: 0.2) to fade-in + translate-up children. Accepts optional `delay` prop for staggered reveals. Respects `prefers-reduced-motion` for accessibility. GPU-accelerated via `transform-gpu`. |
+| **GradientLoader** | [gradient-loader.tsx](file:///d:/Next.js-projects/answarly/components/gradient-loader.tsx) | SVG spinner with a **purple → indigo → pink** gradient stroke. Configurable `size` prop. Used as an inline loading indicator (e.g., inside the search modal). |
+
+---
+
+### Home & Topics
+
+| Component | File | Purpose |
+|---|---|---|
+| **HomeClient** | [home-page-new.tsx](file:///d:/Next.js-projects/answarly/components/home-page-new.tsx) | Main homepage component with two sections: **Hero** (full-height gradient with `RippleGrid` WebGL background, animated card swap showing "Customizable/Smooth/Reliable", CTA buttons) and **Topics grid** (fetches trending topics from API, renders searchable card grid with loading skeletons). |
+| **TopicCard** | [topic-card.tsx](file:///d:/Next.js-projects/answarly/components/topic-card.tsx) | Compact card displaying a topic's bilingual title and description. Links to `/quiz/setup?category=...` for one-click quiz start. Has a **gradient hover overlay** with scale-up animation and elevation lift. |
+| **TopicDetail** | [topic-detail.tsx](file:///d:/Next.js-projects/answarly/components/topic-detail.tsx) | Full-page topic view with gradient banner, bilingual title/description, content area rendered in `prose` dark mode, and a "Back" button. Staggered reveal animations. |
+
+---
+
+### Question & Quiz Components
+
+| Component | File | Purpose |
+|---|---|---|
+| **QuestionCard** | [question-card.tsx](file:///d:/Next.js-projects/answarly/components/question-card.tsx) | **334-line** interactive component for displaying and answering a single question in **all 4 types**: MCQ (button grid with correct/wrong highlighting), True/False (with reason reveal), Code Snippet (starter code block + user code textarea + output textarea, all with copy-to-clipboard buttons), Open Ended (textarea with character count). Auto-saves progress to an in-memory store via `setProgress()`. |
+| **QuizQuestion** | [quiz-question.tsx](file:///d:/Next.js-projects/answarly/components/quiz-question.tsx) | Similar to `QuestionCard` but designed for the **quiz-taking** flow. Receives `value` and `onChange` props from the parent quiz page so answers are collected centrally. Shows type badge, difficulty badge, and category badge. Does **not** show correct/wrong — that's revealed in the results page. |
+| **AddQuestionForm** | [add-question-form.tsx](file:///d:/Next.js-projects/answarly/components/add-question-form.tsx) | **808-line** mega form for creating new questions. Features: 3-level **hierarchical category picker** (root → subcategory → third level), ability to **create new categories** inline, question type selector (MCQ/T-F/Code/Open-ended), conditional fields per type (options, correct answer, code, reason), difficulty picker (Academic: Easy/Medium/Hard or Professional: Beginner/Intermediate/Advanced), and API submission with toast feedback. |
+| **OptionField** | [option-field.tsx](file:///d:/Next.js-projects/answarly/components/option-field.tsx) | Reusable input row for MCQ options inside `AddQuestionForm`. Each row has a text input + "Remove" button. Includes debug hooks for development. |
+
+---
+
+### Search & Leaderboard
+
+| Component | File | Purpose |
+|---|---|---|
+| **GlobalSearch** | [global-search.tsx](file:///d:/Next.js-projects/answarly/components/global-search.tsx) | **Command palette-style** search dialog triggered by clicking the search bar or pressing `⌘K`/`Ctrl+K`. Fetches all topics on mount, filters them with 200ms debounce, shows matching topics with tags, and links to quiz setup. Shows a gradient loader during search transitions. |
+| **Leaderboard** | [leaderboard.tsx](file:///d:/Next.js-projects/answarly/components/leaderboard.tsx) | Ordered list rendering user rankings with avatar circles (numbered), username, attempt count, average score %, and total score. Gradient avatar backgrounds. |
+
+---
+
+## Pages (`/app/(site)`)
+
+| Route | Page | Description |
+|---|---|---|
+| `/` | [page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/page.tsx) | Renders `HomeClient` — the hero + trending topics. |
+| `/login` | [login/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/login/page.tsx) | Login form with email + password, JWT auth. |
+| `/signup` | [signup/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/signup/page.tsx) | Registration form. |
+| `/topics` | [topics/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/topics/page.tsx) | All topics grid with tag-based filtering. |
+| `/categories` | [categories/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/categories/page.tsx) | Hierarchical category browser. |
+| `/quiz/setup` | [quiz/setup/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/quiz/setup/page.tsx) | Quiz configuration — pick category, subcategory, difficulty, question type, and count. |
+| `/quiz/take` | [quiz/take/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/quiz/take/page.tsx) | Quiz-taking interface with `QuizQuestion` cards and submit button. |
+| `/quiz/results` | [quiz/results/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/quiz/results/page.tsx) | Post-quiz results with score, answer review, and save to history. |
+| `/history` | [history/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/history/page.tsx) | Past quiz sessions with data table (sorting, filtering, pagination). |
+| `/leaderboard` | [leaderboard/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/leaderboard/page.tsx) | Global & category-specific rankings, data table UI. |
+| `/qa` | [qa/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/qa/page.tsx) | Community Q&A page — ask questions, browse answers. |
+| `/profile/[id]` | [profile/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/profile/page.tsx) | User profile page with avatar upload, stats. |
+| `/my-questions` | [my-questions/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/my-questions/page.tsx) | Logged-in user's submitted questions with management tools. |
+| `/showcase` | [showcase/page.tsx](file:///d:/Next.js-projects/answarly/app/(site)/showcase/page.tsx) | Project showcase landing page (the page we just built). |
+
+---
+
+## API Routes (`/app/api`)
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `/api/auth/login` | POST | Authenticate user, return JWT token |
+| `/api/auth/register` | POST | Create new user account |
+| `/api/auth/me` | GET | Get current user from JWT |
+| `/api/auth/forgot-password` | POST | Send password reset email via Nodemailer |
+| `/api/auth/reset-password` | POST | Reset password with token |
+| `/api/categories` | GET, POST, PUT, DELETE | Full CRUD on hierarchical categories (supports `?tree=true`, `?parentId=`, `?level=`) |
+| `/api/categories/trending` | GET | Trending topics with question counts and bilingual data |
+| `/api/subcategories` | GET | Fetch subcategories by parent |
+| `/api/questions` | GET, POST | List questions (supports filters), create new question |
+| `/api/questions/random` | GET | Random questions for quiz |
+| `/api/questions/by-category` | GET | Questions filtered by category/subcategory |
+| `/api/quiz` | POST | Start quiz (`action=start`), submit quiz (`action=submit`), get history (`action=history`) |
+| `/api/quiz/results` | POST | Save detailed quiz results with auth |
+| `/api/quiz/sessions` | GET | Get quiz session data |
+| `/api/history` | GET | User quiz history |
+| `/api/leaderboard` | GET | Global and per-category leaderboard data |
+| `/api/progress` | GET | User progress stats |
+| `/api/users` | GET, PUT | User profile and update |
+| `/api/users/avatar` | POST | Avatar upload |
+| `/api/upload-json` | POST | Bulk JSON question import |
+| `/api/seed` | POST | Seed database with sample data |
+
+---
+
+## Lib Layer (`/lib`)
+
+| Module | File | Purpose |
+|---|---|---|
+| **db** | [db.ts](file:///d:/Next.js-projects/answarly/lib/db.ts) | MongoDB connector via Mongoose. Caches the connection globally to prevent multiple connections in dev. Configurable pool size and timeout. |
+| **categories** | [categories.ts](file:///d:/Next.js-projects/answarly/lib/categories.ts) | Client-side API wrapper for category CRUD: `fetchCategories`, `fetchCategoryTree`, `ensureCategory`, `createCategory`, `updateCategory`, `deleteCategory`. |
+| **topics** | [topics.ts](file:///d:/Next.js-projects/answarly/lib/topics.ts) | Bilingual topic manager with `Localized<T>` type. Fetches trending topics from API with fallback to 6 static topics (Web Dev, AI/ML, Best Practices, Product Design, DevOps, Beginner Questions). |
+| **questions** | [questions.ts](file:///d:/Next.js-projects/answarly/lib/questions.ts) | Defines `Question` type with `QuestionType` (MCQ, T/F, Code, Open-ended) and `Difficulty` (easy/medium/hard/beginner/intermediate/advanced). Client-side fallback to in-memory store. |
+| **quiz** | [quiz.ts](file:///d:/Next.js-projects/answarly/lib/quiz.ts) | `startQuiz()` and `submitQuiz()` — API wrappers for the quiz flow. Supports category, subcategory, difficulty, limit, and question type filters. |
+| **quiz-results** | [quiz-results.ts](file:///d:/Next.js-projects/answarly/lib/quiz-results.ts) | Defines `QuizResult` and `QuizAnswer` types. `saveQuizResult()` posts results to API with JWT auth. |
+| **history** | [history.ts](file:///d:/Next.js-projects/answarly/lib/history.ts) | Dual storage — API-backed `getUserHistory()` for logged-in users, and `localStorage`-based `getHistory()`/`addHistoryItem()` for guests. Caps local history at 50 items. |
+| **progress** | [progress.ts](file:///d:/Next.js-projects/answarly/lib/progress.ts) | In-memory key-value store tracking `{attempts, correct}` per question. Used by `QuestionCard` for auto-save. |
+| **answer-evaluator** | [answer-evaluator.ts](file:///d:/Next.js-projects/answarly/lib/answer-evaluator.ts) | Open-ended answer grading engine using **Levenshtein distance** similarity + **keyword matching**. Scores 0-100 with weighted formula (60% keyword match + 40% similarity). Includes keyword extraction utility. |
+| **subcategories** | [subcategories.ts](file:///d:/Next.js-projects/answarly/lib/subcategories.ts) | API wrapper for subcategory fetch by parent. |
+| **api/questions** | [api/questions.ts](file:///d:/Next.js-projects/answarly/lib/api/questions.ts) | Higher-level API client for questions — `createQuestionApi()` with full validation and error handling. |
+| **api/categories** | [api/categories.ts](file:///d:/Next.js-projects/answarly/lib/api/categories.ts) | API client for category operations. |
+| **utils** | [utils.ts](file:///d:/Next.js-projects/answarly/lib/utils.ts) | Utility functions including `cn()` (clsx + tailwind-merge). |
+
+---
+
+## Server Layer (`/server`)
+
+### Models (10 Mongoose schemas)
+
+| Model | File | Fields |
+|---|---|---|
+| **User** | `user.model.ts` | username, email, password (hashed), avatarUrl |
+| **Question** | `question.model.ts` | question, type, options, answer, code, category, subcategory, reason, difficulty |
+| **Category** | `category.model.ts` | name, description, parent, level, path[], isActive |
+| **Subcategory** | `subcategory.model.ts` | name, parent (ref to Category) |
+| **Quiz** | `quiz.model.ts` | userId, categoryId, difficulty, questions, score |
+| **QuizSession** | `quiz-session.model.ts` | userId, category, difficulty, questions, answers, score, totalQuestions, correctAnswers, timeSpent |
+| **History** | `history.model.ts` | userId, score, totalQuestions, correctAnswers, answers[] |
+| **Progress** | `progress.model.ts` | userId, questionId, attempts, correct |
+| **Feedback** | `feedback.model.ts` | userId, questionId, rating, comment |
+| **PasswordReset** | `passwordReset.model.ts` | userId, token, expiresAt |
+
+### Services (14 business logic modules)
+
+| Service | Purpose |
+|---|---|
+| **auth.service** | Register, login, password hashing (bcrypt), JWT token generation/verification |
+| **user.service** | User CRUD, profile updates |
+| **user.filesystem.service** | File-based user avatar management, image processing |
+| **category.service** | Category CRUD, tree-building, path computation |
+| **categories.service** | Category listing and filtering |
+| **subcategories.service** | Subcategory operations |
+| **questions.service** | Question CRUD, filtering by category/type/difficulty |
+| **quiz.service** | Quiz generation — random question selection with filters |
+| **quiz-session.service** | Quiz session lifecycle — create, update, complete, scoring |
+| **leaderboard.service** | Aggregate rankings by score/attempts across users |
+| **progress.service** | User progress tracking and statistics |
+| **history.service** | Quiz history storage and retrieval |
+| **passwordReset.service** | Password reset token generation and validation |
+| **upload-json.service** | Bulk JSON question import and validation |
+
+### Middleware
+
+| Middleware | Purpose |
+|---|---|
+| **auth** | JWT verification, extracts `userId` from token and attaches to request |
+| **error** | Global error handler for API routes |
+
+---
+
+## Hooks (`/hooks`)
+
+| Hook | File | Purpose |
+|---|---|---|
+| **useToast** | [use-toast.ts](file:///d:/Next.js-projects/answarly/hooks/use-toast.ts) | Toast notification system using the shadcn/ui `Toaster` component. Manages a queue of toast messages with auto-dismiss. |
+| **useDebug** | [use-debug.tsx](file:///d:/Next.js-projects/answarly/hooks/use-debug.tsx) | Development-only debug utilities for input fields. Tracks input events, focus/blur, and value changes. Toggle via query param or localStorage. |
+| **useMobile** | [use-mobile.ts](file:///d:/Next.js-projects/answarly/hooks/use-mobile.ts) | Returns `true/false` based on a media query check for mobile viewport widths. |
+
+---
+
+## UI Component Library (`/components/ui`)
+
+**67 components** built on [shadcn/ui](https://ui.shadcn.com/) + [Radix UI](https://radix-ui.com/):
+
+```
+accordion, alert, alert-dialog, aspect-ratio, avatar, badge, breadcrumb,
+button, calendar, card, carousel, chart, checkbox, client-only, collapsible,
+command, context-menu, data-table, dialog, drawer, dropdown-menu,
+hover-card, input, input-otp, label, menubar, navigation-menu, pagination,
+popover, progress, radio-group, resizable, scroll-area, select, separator,
+sheet, sidebar, skeleton, slider, sonner, switch, table, tabs, textarea,
+toast, toaster, toggle, toggle-group, tooltip, ...
+```
+
+---
+
+## Design System
+
+### Color Palette
+- **Primary gradient**: `from-fuchsia-600 via-indigo-600 to-pink-600`
+- **Light background**: `from-white via-[#f7f7fb] to-[#f0f3ff]`
+- **Dark background**: `from-[#0a0b1a] via-[#101231] to-[#171a3f]`
+- **Card surfaces**: `bg-white/90 dark:bg-white/5` with `border-white/60 dark:border-white/10`
+
+### Typography
+- **Font**: Inter (Google Fonts)
+- **Headings**: `font-bold tracking-tight`
+
+### Animations (defined in `globals.css`)
+- `float` — Vertical bobbing (6s ease-in-out)
+- `glow` — Pulsating indigo box-shadow (2s alternate)
+- `shimmer` — Sliding highlight gradient (2s infinite)
+- `pulse-slow` — Gentle opacity pulse (3s)
+
+### Glassmorphism Pattern
+```css
+bg-white/90 dark:bg-white/5
+border border-white/60 dark:border-white/10
+backdrop-blur-sm
+rounded-2xl shadow-sm
+```
+
+---
+
+## Screenshots
+
+````carousel
+![Hero — Animated particles and gradient title](C:\Users\body1\.gemini\antigravity\brain\47955bd1-2db8-4e0f-ba26-3b21e98f6fd2\showcase_hero_1772674871620.png)
+<!-- slide -->
+![Features grid with icon cards](C:\Users\body1\.gemini\antigravity\brain\47955bd1-2db8-4e0f-ba26-3b21e98f6fd2\showcase_features_1772674884784.png)
+<!-- slide -->
+![Tech stack and design philosophy](C:\Users\body1\.gemini\antigravity\brain\47955bd1-2db8-4e0f-ba26-3b21e98f6fd2\showcase_tech_design_1772674904705.png)
+````
+
+---
+
+## Key Design Decisions
+
+1. **Dual database support** — MongoDB (Mongoose) as the primary data store, PostgreSQL (Sequelize) available for relational queries. The `lib/db.ts` module handles connection pooling and caching.
+2. **Client-side fallbacks** — Every API call has a graceful fallback (empty arrays, static data, in-memory stores) so the app works even without a backend.
+3. **Bilingual from day one** — The `i18n.tsx` context provides full EN/AR dictionaries with RTL support baked into every component.
+4. **Answer evaluation engine** — Open-ended answers are graded using a custom Levenshtein distance + keyword matching algorithm, not just exact string matching.
+5. **Question type polymorphism** — The `QuestionCard` and `QuizQuestion` components use a single interface (`Question`) with conditional rendering for all 4 question types.

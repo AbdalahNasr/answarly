@@ -66,6 +66,17 @@ export async function startQuiz(opts: { categoryId?: string; subCategoryId?: str
 		category: q.category?.name || 'Unknown', // Use category name
 		categoryPath: q.category?.path || [], // Use category path for hierarchical display
 		categoryLevel: q.category?.level || 0, // Use category level
+		heading: q.heading || undefined, // Question heading if provided
+		description: q.description || undefined, // Question description if provided
+		media: q.media && q.media.length > 0 ? q.media.map((m: any) => ({
+			url: m.url,
+			type: m.type,
+			position: m.position,
+			caption: m.caption,
+			width: m.width || 'auto', // Include width/sizing
+			maxWidth: m.maxWidth || 800
+		})) : undefined, // Media items (images/GIFs) with sizing
+		contentLayout: q.contentLayout || undefined, // Layout configuration
 	}));
 	
 	return { questions: payload };

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react"
 import type { Question } from "@/lib/questions"
+import { useI18n } from "@/components/i18n"
 import {
   BadgeCheck,
   Code2,
@@ -12,13 +13,68 @@ import {
   Clipboard,
   ClipboardCheck,
   Trash2,
+  Headphones,
+  FormInput,
+  Shuffle,
+  AlignJustify,
+  Calculator,
+  BarChart,
+  Layers,
+  Image as ImageIcon
 } from "lucide-react"
+import { 
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import 'katex/dist/katex.min.css';
+import katex from 'katex';
+
+function SortableItem({ id, content }: { id: string; content: string }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="p-4 mb-2 rounded-xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5 cursor-grab active:cursor-grabbing hover:shadow-sm"
+    >
+      {content}
+    </div>
+  );
+}
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { getProgress, setProgress } from "@/lib/progress"
+import { MediaPlayer } from "@/components/media-player"
 
 function TypeIcon({ type }: { type: Question["type"] }) {
   switch (type) {
@@ -28,12 +84,33 @@ function TypeIcon({ type }: { type: Question["type"] }) {
       return <ListChecks className="h-4 w-4" />
     case "true_false":
       return <BadgeCheck className="h-4 w-4" />
+    case "listening":
+      return <Headphones className="h-4 w-4" />
+    case "fill_in_blank":
+      return <FormInput className="h-4 w-4" />
+    case "match_pairs":
+      return <Shuffle className="h-4 w-4" />
+    case "ordering":
+      return <AlignJustify className="h-4 w-4" />
+    case "math_equation":
+      return <Calculator className="h-4 w-4" />
+    case "graph_chart":
+      return <BarChart className="h-4 w-4" />
+    case "diagram_label":
+      return <Layers className="h-4 w-4" />
+    case "image_mcq":
+      return <ImageIcon className="h-4 w-4" />
     default:
       return <HelpCircle className="h-4 w-4" />
   }
 }
 
 export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAnswerUpdate?: (answer: string) => void }) {
+  const { dict } = useI18n()
+  const typeLabel = useMemo(() => {
+    return dict.questionTypes[q.type as keyof typeof dict.questionTypes] || q.type
+  }, [q.type, dict])
+  
   const onAnswerUpdateRef = useRef(onAnswerUpdate)
   onAnswerUpdateRef.current = onAnswerUpdate
   
@@ -50,6 +127,19 @@ export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAns
   // Code snippet user inputs (persisted)
   const [codeInput, setCodeInput] = useState(q.code || "")
   const [output, setOutput] = useState("")
+
+  // New states for expanded types
+  const [blanks, setBlanks] = useState<string[]>([])
+  const [order, setOrder] = useState<string[]>(q.orderItems || [])
+  const [pairs, setPairs] = useState<Array<{ left: string; right: string }>>([])
+  const [labelAnswers, setLabelAnswers] = useState<Array<{ id: string; text: string }>>([])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Load persisted progress on mount
   useEffect(() => {
@@ -122,10 +212,16 @@ export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAns
       <CardHeader className="relative">
         <div className="flex items-start justify-between gap-4">
           <div>
+            {/* Display question heading if it exists and showHeading is true */}
+            {(q as any).heading && (q as any).contentLayout?.showHeading && (
+              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
+                {(q as any).heading}
+              </h3>
+            )}
             <div className="inline-flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
               <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/60 dark:border-white/10 bg-white/70 dark:bg-white/10 px-2">
                 <TypeIcon type={q.type} />
-                <span className="ml-1 capitalize">{q.type.replace("_", " ")}</span>
+                <span className="ml-1">{typeLabel}</span>
               </span>
               {q.difficulty && (
                 <span
@@ -154,6 +250,32 @@ export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAns
       </CardHeader>
 
       <CardContent className="relative">
+        {/* Display description and media if they exist */}
+        {((q as any).description || (q as any).media?.length > 0) && (
+          <div className="mb-6 space-y-4">
+            {/* Display description before media if configured */}
+            {(q as any).description && (q as any).contentLayout?.showDescription &&
+             (q as any).contentLayout?.descriptionPosition === "before" && (
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                {(q as any).description}
+              </p>
+            )}
+
+            {/* Display media */}
+            {(q as any).media && (q as any).media.length > 0 && (
+              <MediaPlayer media={(q as any).media} />
+            )}
+
+            {/* Display description after media if configured */}
+            {(q as any).description && (q as any).contentLayout?.showDescription &&
+             (q as any).contentLayout?.descriptionPosition === "after" && (
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                {(q as any).description}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Code Snippet: Starter + User Code + Output input with Copy */}
         {q.type === "code_snippet" && (
           <div className="space-y-4">
@@ -308,12 +430,9 @@ export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAns
           </div>
         )}
 
-        {/* Open Ended */}
         {q.type === "open_ended" && (
           <div className="space-y-2">
-            <Label htmlFor={`open-ended-${q.id}`} className="text-xs text-zinc-600 dark:text-zinc-300">
-              Your answer
-            </Label>
+            <Label className="text-xs text-zinc-600 dark:text-zinc-300">Your answer</Label>
             <Textarea
               id={`open-ended-${q.id}`}
               value={text}
@@ -321,10 +440,243 @@ export default function QuestionCard({ q, onAnswerUpdate }: { q: Question; onAns
               placeholder={"Write your answer here..."}
               className="min-h-[120px] rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
             />
-            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-              <span>{"This question isn't auto-graded."}</span>
-              <span>{text.length} chars</span>
+          </div>
+        )}
+
+        {q.type === "listening" && (
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex flex-col gap-3">
+              <div className="flex items-center gap-3 text-xs font-bold text-primary">
+                <Headphones className="w-4 h-4" />
+                <span>Audio Prompt</span>
+              </div>
+              <audio src={q.audioUrl} controls className="w-full h-10" />
             </div>
+
+            {q.listeningAnswerFormat === "mcq" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {(q.options || []).map((opt) => {
+                  const active = choice === opt
+                  return (
+                    <Button
+                      key={opt}
+                      variant="outline"
+                      onClick={() => setChoice(opt)}
+                      className={cn(
+                        "justify-start rounded-xl border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-left",
+                        active && "ring-2 ring-primary",
+                      )}
+                    >
+                      <span className="truncate">{opt}</span>
+                    </Button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-xs text-zinc-600 dark:text-zinc-300">Your transcription/answer</Label>
+                <Textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={"What did you hear?"}
+                  className="min-h-[100px] rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {q.type === "fill_in_blank" && (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-muted/20 border border-white/10 leading-loose text-lg">
+              {q.blankTemplate?.split(/___/).map((part, i, arr) => (
+                <span key={i}>
+                  {part}
+                  {i < arr.length - 1 && (
+                    <input
+                      type="text"
+                      value={blanks[i] || ""}
+                      onChange={(e) => {
+                        const newBlanks = [...blanks]
+                        newBlanks[i] = e.target.value
+                        setBlanks(newBlanks)
+                      }}
+                      className="mx-2 w-32 h-8 px-2 rounded-lg bg-primary/10 border-b-2 border-primary outline-none focus:bg-primary/20 transition-all text-sm font-bold text-center"
+                      placeholder={`...`}
+                    />
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {q.type === "ordering" && (
+          <div className="space-y-4">
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => {
+                const { active, over } = event;
+                if (over && active.id !== over.id) {
+                  const oldIndex = order.indexOf(active.id as string);
+                  const newIndex = order.indexOf(over.id as string);
+                  setOrder(arrayMove(order, oldIndex, newIndex));
+                }
+              }}
+            >
+              <SortableContext 
+                items={order}
+                strategy={verticalListSortingStrategy}
+              >
+                {order.map((item) => (
+                  <SortableItem key={item} id={item} content={item} />
+                ))}
+              </SortableContext>
+            </DndContext>
+            <p className="text-[10px] text-muted-foreground italic text-center">Drag items to reorder them correctly.</p>
+          </div>
+        )}
+
+        {q.type === "match_pairs" && (
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Terms</Label>
+              {(q.matchPairs || []).map((pair, i) => (
+                <div key={i} className="h-14 flex items-center px-4 rounded-xl bg-muted/20 border border-white/5 font-bold text-sm">
+                  {pair.left}
+                </div>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Definitions</Label>
+              {(q.matchPairs || []).map((_, i) => (
+                <select
+                  key={i}
+                  value={pairs[i]?.right || ""}
+                  onChange={(e) => {
+                    const newPairs = [...(pairs.length > 0 ? pairs : (q.matchPairs || []).map(p => ({ left: p.left, right: "" })))]
+                    newPairs[i] = { left: q.matchPairs![i].left, right: e.target.value }
+                    setPairs(newPairs)
+                  }}
+                  className="w-full h-14 px-4 rounded-xl bg-white/90 dark:bg-white/5 border border-white/60 dark:border-white/10 outline-none focus:ring-2 focus:ring-primary/20 font-medium text-sm"
+                >
+                  <option value="">Select match...</option>
+                  {(q.matchPairs || []).map(p => p.right).sort().map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {q.type === "math_equation" && (
+          <div className="space-y-6">
+            <div className="p-10 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center">
+              <div 
+                className="text-3xl"
+                dangerouslySetInnerHTML={{ 
+                  __html: q.latex ? katex.renderToString(q.latex, { throwOnError: false }) : "" 
+                }} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-zinc-600 dark:text-zinc-300">Your solution</Label>
+              <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Enter value..."
+                className="h-14 rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10 px-6 text-lg font-bold"
+              />
+            </div>
+          </div>
+        )}
+
+        {q.type === "diagram_label" && (
+          <div className="space-y-6">
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40">
+              {q.media?.[0]?.url && (
+                <img src={q.media[0].url} className="w-full h-auto" />
+              )}
+              {(q.diagramLabels || []).map((l, i) => (
+                <div 
+                  key={i} 
+                  className="absolute h-8 w-8 -ml-4 -mt-4 rounded-full bg-primary flex items-center justify-center text-xs font-black text-white shadow-xl cursor-help group/pin" 
+                  style={{ left: `${l.x}%`, top: `${l.y}%` }}
+                >
+                  {i + 1}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-black/80 text-[10px] whitespace-nowrap opacity-0 group-hover/pin:opacity-100 transition-opacity">
+                    Label #{i + 1}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(q.diagramLabels || []).map((l, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/10 border border-white/5">
+                  <span className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs">
+                    {i + 1}
+                  </span>
+                  <Input
+                    value={labelAnswers.find((item: any) => item.id === String(i))?.text || ""}
+                    onChange={(e) => {
+                      const index = labelAnswers.findIndex((item: any) => item.id === String(i))
+                      const newLabels = [...labelAnswers]
+                      if (index > -1) {
+                        newLabels[index] = { id: String(i), text: e.target.value }
+                      } else {
+                        newLabels.push({ id: String(i), text: e.target.value })
+                      }
+                      setLabelAnswers(newLabels)
+                    }}
+                    placeholder="Identification..."
+                    className="flex-1 bg-transparent border-none h-8"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(q.type === "graph_chart" || q.type === "image_mcq") && (
+          <div className="space-y-6">
+            {q.type === "image_mcq" ? (
+              <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {(q.options || []).map((opt) => {
+                  const active = choice === opt
+                  const correct = q.answer === opt
+                  const showState = choice !== null
+                  return (
+                    <Button
+                      key={opt}
+                      variant="outline"
+                      className={cn(
+                        "justify-start rounded-xl border-white/60 dark:border-white/10 bg-white/80 dark:bg-white/5 text-left",
+                        active && "ring-2 ring-violet-500",
+                        showState && correct && "bg-emerald-500/10 dark:bg-emerald-400/10",
+                        showState && active && !correct && "bg-rose-500/10 dark:bg-rose-400/10",
+                      )}
+                      onClick={() => setChoice(opt)}
+                    >
+                      <span className="truncate">{opt}</span>
+                      {showState && correct && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-500" />}
+                      {showState && active && !correct && <XCircle className="ml-auto h-4 w-4 text-rose-500" />}
+                    </Button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-xs text-zinc-600 dark:text-zinc-300">Your synthesis</Label>
+                <Textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={"Enter your answer..."}
+                  className="min-h-[100px] rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+                />
+              </div>
+            )}
           </div>
         )}
       </CardContent>

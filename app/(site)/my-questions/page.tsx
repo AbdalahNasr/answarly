@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -11,19 +11,53 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Search, Plus, Edit, Trash, Filter, Eye, EyeOff } from 'lucide-react'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Search, Plus, Edit, Trash, Filter, Eye, EyeOff, Image, Check, ChevronsUpDown } from 'lucide-react'
+import { EditQuestionAdvancedDialog } from '@/components/edit-question-advanced-dialog'
 import { cn } from '@/lib/utils'
+
+import { useI18n } from '@/components/i18n'
 
 interface Question {
   _id: string
   text: string
-  type: 'multiple_choice' | 'true_false' | 'code_snippet' | 'open_ended'
+  type: 
+    | 'multiple_choice' 
+    | 'true_false' 
+    | 'code_snippet' 
+    | 'open_ended'
+    | 'listening'
+    | 'fill_in_blank'
+    | 'match_pairs'
+    | 'ordering'
+    | 'math_equation'
+    | 'graph_chart'
+    | 'diagram_label'
+    | 'image_mcq'
   difficulty: 'easy' | 'medium' | 'hard'
   options?: string[]
   correctAnswer?: string
   category: {
     _id: string
     name: string
+  }
+  heading?: string
+  description?: string
+  media?: Array<{
+    url: string
+    type: 'image' | 'gif'
+    position: number
+    caption?: string
+    width?: 'full' | 'half' | 'small' | 'auto'
+    maxWidth?: number
+    fileName?: string
+  }>
+  contentLayout?: {
+    showHeading?: boolean
+    showDescription?: boolean
+    headingPosition?: 'before' | 'after'
+    descriptionPosition?: 'before' | 'after'
   }
   createdAt: string
   updatedAt: string
@@ -35,7 +69,81 @@ interface Category {
   description?: string
 }
 
+// Searchable Category Combobox Component
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: Category[]
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const filteredCategories = useMemo(() => {
+    return categories.filter((cat) =>
+      cat.name.toLowerCase().includes(search.toLowerCase())
+    )
+  }, [categories, search])
+
+  const selectedCategory = categories.find((cat) => cat._id === value)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10"
+        >
+          <span className={cn(!value && 'text-gray-500')}>
+            {selectedCategory ? selectedCategory.name : 'Select category...'}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Search categories..."
+            value={search}
+            onValueChange={setSearch}
+            className="h-9"
+          />
+          <CommandEmpty>No category found.</CommandEmpty>
+          <CommandList>
+            <CommandGroup>
+              {filteredCategories.map((category) => (
+                <CommandItem
+                  key={category._id}
+                  value={category._id}
+                  onSelect={(currentValue) => {
+                    onChange(currentValue === value ? '' : currentValue)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      'mr-2 h-4 w-4',
+                      value === category._id ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                  {category.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export default function MyQuestionsPage() {
+  const { dict } = useI18n()
   const [questions, setQuestions] = useState<Question[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +168,21 @@ export default function MyQuestionsPage() {
   // Delete confirmation
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deletingQuestion, setDeletingQuestion] = useState<Question | null>(null)
+  
+  // Advanced edit modal state
+  const [advancedEditModalOpen, setAdvancedEditModalOpen] = useState(false)
+  const [advancedEditingQuestion, setAdvancedEditingQuestion] = useState<Question | null>(null)
+  const [advancedEditData, setAdvancedEditData] = useState({
+    heading: "",
+    description: "",
+    media: [],
+    contentLayout: {
+      showHeading: true,
+      showDescription: true,
+      headingPosition: "before",
+      descriptionPosition: "before"
+    }
+  })
   
   const router = useRouter()
   const { toast } = useToast()
@@ -216,6 +339,55 @@ export default function MyQuestionsPage() {
       case 'code_snippet': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
       case 'open_ended': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+    }
+  }
+
+  const openAdvancedEdit = (question: Question) => {
+    setAdvancedEditingQuestion(question)
+    // Load existing data from the question
+    setAdvancedEditData({
+      heading: question.heading || "",
+      description: question.description || "",
+      media: question.media || [],
+      contentLayout: question.contentLayout || {
+        showHeading: true,
+        showDescription: true,
+        headingPosition: "before",
+        descriptionPosition: "before"
+      }
+    })
+    setAdvancedEditModalOpen(true)
+  }
+
+  const handleSaveAdvancedEdit = async (data: any) => {
+    if (!advancedEditingQuestion) return
+
+    try {
+      const token = localStorage.getItem('answerly-token')
+      if (!token) {
+        toast({ title: 'Error', description: 'Please log in to edit questions', variant: 'destructive' })
+        return
+      }
+
+      const response = await fetch(`/api/questions/${advancedEditingQuestion._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+
+      const result = await response.json()
+      if (response.ok) {
+        toast({ title: 'Success', description: 'Question details updated successfully' })
+        setAdvancedEditModalOpen(false)
+        loadQuestions()
+      } else {
+        toast({ title: 'Error', description: result.message || 'Failed to update question', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update question', variant: 'destructive' })
     }
   }
 
@@ -384,7 +556,7 @@ export default function MyQuestionsPage() {
                           {question.difficulty}
                         </Badge>
                         <Badge className={getTypeColor(question.type)}>
-                          {question.type.replace('_', ' ')}
+                          {dict.questionTypes[question.type as keyof typeof dict.questionTypes] || question.type}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
                           {question.category.name}
@@ -429,8 +601,18 @@ export default function MyQuestionsPage() {
                         size="sm"
                         onClick={() => handleEdit(question)}
                         className="h-8 w-8 p-0"
+                        title="Edit question details"
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAdvancedEdit(question)}
+                        className="h-8 w-8 p-0"
+                        title="Edit heading, description, and media"
+                      >
+                        <Image className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
@@ -440,6 +622,7 @@ export default function MyQuestionsPage() {
                           setDeleteModalOpen(true)
                         }}
                         className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Delete question"
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
@@ -506,18 +689,11 @@ export default function MyQuestionsPage() {
             
             <div>
               <Label className="text-sm">Category</Label>
-              <Select value={editForm.category} onValueChange={(value) => setEditForm({ ...editForm, category: value })}>
-                <SelectTrigger className="rounded-xl bg-white/90 dark:bg-white/5 border-white/60 dark:border-white/10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category._id} value={category._id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryCombobox
+                categories={categories}
+                value={editForm.category}
+                onChange={(value) => setEditForm({ ...editForm, category: value })}
+              />
             </div>
             
             {editForm.type === 'multiple_choice' && (
@@ -592,7 +768,7 @@ export default function MyQuestionsPage() {
               Are you sure you want to delete this question? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          
+
           {deletingQuestion && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
               <p className="text-sm text-red-700 dark:text-red-300">
@@ -600,13 +776,13 @@ export default function MyQuestionsPage() {
               </p>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
@@ -615,6 +791,17 @@ export default function MyQuestionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Advanced Edit Dialog */}
+      {advancedEditingQuestion && (
+        <EditQuestionAdvancedDialog
+          open={advancedEditModalOpen}
+          onOpenChange={setAdvancedEditModalOpen}
+          questionId={advancedEditingQuestion._id}
+          initialData={advancedEditData}
+          onSave={handleSaveAdvancedEdit}
+        />
+      )}
     </main>
   )
 }
