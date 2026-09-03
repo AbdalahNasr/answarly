@@ -477,6 +477,7 @@ export default function AddQuestionForm({ onAdded, stitchId }: Props) {
         // Create the question
         await createQuestionApi({
           text: question.trim(),
+          family: activeFamily,
           type: type,
           options: (type === "multiple_choice" || type === "listening" || type === "image_mcq") ? mcqValidOptions : undefined,
           correctAnswer: (type === "multiple_choice" || type === "true_false" || type === "open_ended" || type === "listening" || type === "math_equation" || type === "graph_chart" || type === "image_mcq") ? answer.trim() : undefined,

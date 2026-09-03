@@ -1,5 +1,6 @@
 export type CreateQuestionPayload = {
   text: string
+  family?: 'choice' | 'text' | 'structured' | 'visual' | 'media'
   type:
     | 'multiple_choice'
     | 'true_false'

@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
     const { 
-      text, type, difficulty, options, correctAnswer, keywords, category, 
+      text, family, type, difficulty, options, correctAnswer, keywords, category, 
       reason, heading, description, media, contentLayout,
       audioUrl, listeningAnswerFormat, blankTemplate, blankAnswers, 
       matchPairs, orderItems, latex, diagramLabels 
@@ -217,6 +217,7 @@ export async function POST(request: NextRequest) {
     
     const question = new Question({
       text: text.trim(),
+      family: family || (['multiple_choice', 'true_false', 'image_mcq'].includes(type) ? 'choice' : ['open_ended', 'math_equation'].includes(type) ? 'text' : ['fill_in_blank', 'match_pairs', 'ordering'].includes(type) ? 'structured' : ['diagram_label', 'drawio_studio'].includes(type) ? 'visual' : 'media'),
       type,
       difficulty,
       options: (type === 'multiple_choice' || type === 'listening' || type === 'image_mcq') ? options : undefined,
